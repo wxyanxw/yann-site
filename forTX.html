@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#ff8fab">
+<title>谭笑，我好想你 · 一封信</title>
+<style>
+  :root{
+    --pink:#ff8fab; --rose:#ff5d8f; --gold:#ffd6a5;
+    --ink:#5b3a4a; --paper:#fff7fb;
+    --bg1:#ffe3ec; --bg2:#ffd6e0; --bg3:#e7f0ff; --blob:#ffb3c6;
+  }
+  /* 夜晚主题 */
+  body.night{
+    --pink:#ff9ec4; --rose:#ff6fa3; --gold:#ffe1a8;
+    --ink:#f3e6ef; --paper:#2a2140;
+    --bg1:#1a1530; --bg2:#2d1b4e; --bg3:#1f2b4d; --blob:#6c4bd1;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ height:100%; margin:0; }
+  body{
+    font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    color:var(--ink);
+    background:linear-gradient(160deg,var(--bg1),var(--bg2) 55%,var(--bg3));
+    overflow:hidden; position:relative;
+    user-select:none; -webkit-user-select:none;
+    touch-action:manipulation;
+    transition:background .8s ease;
+  }
+  /* 漂浮光斑背景 */
+  .blob{ position:absolute; border-radius:50%; filter:blur(40px); opacity:.55;
+    animation:drift 18s ease-in-out infinite; }
+  .blob.b1{ width:46vmax; height:46vmax; background:var(--blob);
+    top:-12vmax; left:-10vmax; animation-delay:0s; }
+  .blob.b2{ width:38vmax; height:38vmax; background:var(--gold);
+    bottom:-14vmax; right:-8vmax; animation-delay:-6s; }
+  .blob.b3{ width:30vmax; height:30vmax; background:var(--rose);
+    top:40%; left:55%; animation-delay:-11s; opacity:.35; }
+  @keyframes drift{
+    0%,100%{ transform:translate(0,0) scale(1); }
+    33%{ transform:translate(6vmax,-4vmax) scale(1.1); }
+    66%{ transform:translate(-5vmax,5vmax) scale(.95); }
+  }
+  /* 星星（夜晚） */
+  .star{ position:absolute; width:3px; height:3px; border-radius:50%;
+    background:#fff; opacity:0; animation:tw 3s ease-in-out infinite; }
+  body.night .star{ opacity:.8; }
+  @keyframes tw{ 0%,100%{opacity:.2; transform:scale(.6);} 50%{opacity:.9; transform:scale(1.2);} }
+
+  /* 开场信封 */
+  #intro{ position:fixed; inset:0; z-index:50; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:26px; padding:30px;
+    background:linear-gradient(160deg,var(--bg1),var(--bg2),var(--bg3));
+    transition:opacity .9s ease, transform .9s ease; }
+  #intro.hide{ opacity:0; transform:scale(1.08); pointer-events:none; }
+  .envelope{ width:150px; height:108px; position:relative; cursor:pointer;
+    animation:bob 2.4s ease-in-out infinite; }
+  .env-body{ position:absolute; inset:0; background:var(--paper);
+    border-radius:14px; box-shadow:0 14px 30px rgba(0,0,0,.18); }
+  .env-flap{ position:absolute; top:0; left:0; right:0; height:60px;
+    background:var(--rose); clip-path:polygon(0 0,100% 0,50% 100%);
+    transition:transform .6s ease; transform-origin:top; z-index:2; }
+  .envelope.open .env-flap{ transform:rotateX(180deg); }
+  .env-heart{ position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    font-size:40px; z-index:1; animation:beat 1.4s ease-in-out infinite; }
+  @keyframes bob{ 0%,100%{transform:translateY(0);} 50%{transform:translateY(-10px);} }
+  @keyframes beat{ 0%,100%{transform:translate(-50%,-50%) scale(1);}
+    50%{transform:translate(-50%,-50%) scale(1.18);} }
+  .intro-title{ font-size:22px; font-weight:700; letter-spacing:2px; text-align:center; }
+  .intro-sub{ font-size:14px; opacity:.8; text-align:center; max-width:300px; line-height:1.7; }
+
+  /* 主界面 */
+  #main{ position:relative; z-index:10; height:100%; display:flex; flex-direction:column;
+    align-items:center; justify-content:space-between; padding:max(28px,env(safe-area-inset-top)) 22px max(28px,env(safe-area-inset-bottom));
+    opacity:0; transition:opacity 1s ease .3s; }
+  #main.show{ opacity:1; }
+  .top{ text-align:center; min-height:54px; }
+  .greet{ font-size:15px; opacity:.85; }
+  .date{ font-size:12px; opacity:.6; margin-top:4px; letter-spacing:1px; }
+
+  .center{ flex:1; display:flex; flex-direction:column; align-items:center;
+    justify-content:center; gap:14px; }
+  .heart-btn{ font-size:96px; line-height:1; cursor:pointer; filter:drop-shadow(0 10px 18px rgba(255,93,143,.45));
+    animation:beatBig 1.6s ease-in-out infinite; transition:transform .12s ease; }
+  .heart-btn.pop{ transform:scale(1.35); }
+  @keyframes beatBig{ 0%,100%{transform:scale(1);} 14%{transform:scale(1.12);}
+    28%{transform:scale(1);} 42%{transform:scale(1.08);} 56%{transform:scale(1);} }
+  .big-text{ font-size:30px; font-weight:800; letter-spacing:3px; min-height:38px;
+    text-align:center; text-shadow:0 2px 10px rgba(255,93,143,.35); }
+  .big-text .caret{ display:inline-block; width:3px; margin-left:2px;
+    background:var(--rose); animation:blink .8s step-end infinite; }
+  @keyframes blink{ 50%{opacity:0;} }
+  .name-tag{ font-size:13px; opacity:.7; letter-spacing:1px; }
+  .counter{ font-size:13px; opacity:.85; }
+  .counter b{ font-size:20px; color:var(--rose); }
+  .progress{ width:200px; height:10px; border-radius:99px; background:rgba(0,0,0,.1);
+    overflow:hidden; box-shadow:inset 0 1px 3px rgba(0,0,0,.15); }
+  body.night .progress{ background:rgba(255,255,255,.12); }
+  .progress > i{ display:block; height:100%; width:0%;
+    background:linear-gradient(90deg,var(--gold),var(--rose)); transition:width .4s ease; }
+
+  .quote{ font-size:16px; line-height:1.7; text-align:center; max-width:320px;
+    min-height:48px; opacity:.92; font-style:italic; }
+  .toolbar{ display:flex; gap:12px; flex-wrap:wrap; justify-content:center; }
+  .btn{ border:none; border-radius:99px; padding:11px 18px; font-size:14px; font-weight:600;
+    color:#fff; background:linear-gradient(135deg,var(--rose),var(--pink));
+    box-shadow:0 6px 16px rgba(255,93,143,.35); cursor:pointer; transition:transform .1s ease; }
+  .btn:active{ transform:scale(.94); }
+  .btn.ghost{ background:rgba(255,255,255,.25); color:var(--ink);
+    box-shadow:0 4px 12px rgba(0,0,0,.08); }
+  .hint{ font-size:11px; opacity:.55; text-align:center; line-height:1.8; }
+
+  /* 飘浮粒子 */
+  .particle{ position:absolute; z-index:20; pointer-events:none; font-size:22px;
+    animation:floatUp 1.6s ease-out forwards; }
+  @keyframes floatUp{
+    0%{ transform:translateY(0) scale(.6); opacity:1; }
+    100%{ transform:translateY(-160px) scale(1.2) rotate(20deg); opacity:0; }
+  }
+  .plus{ position:absolute; z-index:21; pointer-events:none; font-size:16px;
+    font-weight:700; color:var(--rose); animation:plusUp 1s ease-out forwards; }
+  @keyframes plusUp{ 0%{transform:translateY(0);opacity:1;} 100%{transform:translateY(-60px);opacity:0;} }
+
+  /* 彩蛋层 */
+  #egg{ position:fixed; inset:0; z-index:40; pointer-events:none; display:none;
+    align-items:center; justify-content:center; }
+  #egg.show{ display:flex; }
+  .egg-card{ background:var(--paper); color:var(--ink); padding:30px 26px; border-radius:20px;
+    max-width:300px; text-align:center; box-shadow:0 20px 50px rgba(0,0,0,.3);
+    animation:pop .5s cubic-bezier(.2,1.4,.5,1); }
+  .egg-card .big{ font-size:54px; }
+  .egg-card h3{ margin:10px 0 6px; }
+  .egg-card p{ font-size:14px; line-height:1.7; opacity:.85; }
+  @keyframes pop{ 0%{transform:scale(.5);opacity:0;} 100%{transform:scale(1);opacity:1;} }
+
+  .rain{ position:absolute; top:-40px; font-size:26px; animation:fall linear forwards; }
+  @keyframes fall{ to{ transform:translateY(110vh) rotate(360deg); opacity:.9; } }
+
+  .toast{ position:fixed; left:50%; bottom:90px; transform:translateX(-50%) translateY(20px);
+    background:rgba(0,0,0,.78); color:#fff; padding:10px 18px; border-radius:99px; font-size:14px;
+    z-index:60; opacity:0; transition:.3s ease; pointer-events:none; white-space:nowrap; max-width:90%; }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+  <div class="blob b1"></div>
+  <div class="blob b2"></div>
+  <div class="blob b3"></div>
+  <div id="stars"></div>
+
+  <!-- 开场：一封写给谭笑的信 -->
+  <div id="intro">
+    <div class="envelope" id="envelope">
+      <div class="env-body"></div>
+      <div class="env-heart">💌</div>
+      <div class="env-flap"></div>
+    </div>
+    <div class="intro-title">有一封信，只给谭笑</div>
+    <div class="intro-sub">这是一颗想谭笑的星球，谭笑是被想念的那个人 👧<br>点一下信封，把它轻轻打开</div>
+  </div>
+
+  <!-- 主界面 -->
+  <div id="main">
+    <div class="top">
+      <div class="greet" id="greet">……</div>
+      <div class="date" id="date"></div>
+    </div>
+
+    <div class="center">
+      <div class="heart-btn" id="heart">💖</div>
+      <div class="big-text" id="bigText"><span class="caret"></span></div>
+      <div class="name-tag" id="nameTag">—— 这封信，专门写给谭笑</div>
+      <div class="counter">已经想了谭笑 <b id="count">0</b> 次</div>
+      <div class="progress"><i id="bar"></i></div>
+    </div>
+
+    <div style="width:100%; display:flex; flex-direction:column; align-items:center; gap:16px;">
+      <div class="quote" id="quote">……</div>
+      <div class="toolbar">
+        <button class="btn" id="callBtn">喊她一声 🔊</button>
+        <button class="btn ghost" id="whisperBtn">悄悄说一句 💬</button>
+        <button class="btn ghost" id="shareBtn">复制给谭笑 📋</button>
+        <button class="btn ghost" id="shakeBtn">摇一摇 📳</button>
+      </div>
+      <div class="hint">戳爱心会+1 · 点空白处飘爱心<br>长按爱心有惊喜 · 把手机摇一摇 · 点「喊她一声」听我喊谭笑</div>
+    </div>
+  </div>
+
+  <div id="egg"><div class="egg-card" id="eggCard"></div></div>
+  <div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+  var $ = function(id){ return document.getElementById(id); };
+  var NAME = "谭笑";
+
+  /* ---------- 时间主题 ---------- */
+  var hour = new Date().getHours();
+  var isNight = (hour >= 19 || hour < 6);
+  if(isNight) document.body.classList.add("night");
+
+  var greetText = isNight ? NAME+"，夜深了，我又开始想你 🌙"
+                : (hour < 11 ? NAME+"，早安，今天也在想你 ☀️"
+                : hour < 18 ? NAME+"，下午好，偷偷想你一下 ☁️"
+                : NAME+"，黄昏了，想念浓度 +100% 🌇");
+  $("greet").textContent = greetText;
+
+  var d = new Date();
+  var week = ["周日","周一","周二","周三","周四","周五","周六"][d.getDay()];
+  $("date").textContent = d.getFullYear()+"年"+(d.getMonth()+1)+"月"+d.getDate()+"日 · "+week;
+
+  /* 夜晚加星星 */
+  if(isNight){
+    var stars = $("stars");
+    for(var i=0;i<40;i++){
+      var s = document.createElement("div");
+      s.className = "star";
+      s.style.left = Math.random()*100+"%";
+      s.style.top = Math.random()*100+"%";
+      s.style.animationDelay = (Math.random()*3)+"s";
+      stars.appendChild(s);
+    }
+  }
+
+  /* ---------- 专属谭笑的情话库 ---------- */
+  var quotes = [
+    NAME+"，你笑起来的时候，全世界都亮了。",
+    NAME+"，今天的云很好看，可惜你不在身边。",
+    NAME+"，我数了星星，没有你眼睛亮。",
+    NAME+"，风很温柔，像你笑的时候。",
+    NAME+"，想见你，哪怕只是路过。",
+    NAME+"，手机里存满了想对你说的话。",
+    NAME+"，晚安，是说不出口的“我想你”。",
+    NAME+"，你是我所有温柔的来处。",
+    NAME+"，距离再远，我也想把你装进口袋。",
+    NAME+"，今天也想你了，第 "+"{n}"+" 次。",
+    "如果想念有重量，谭笑，我已经被压得走不动路。",
+    "谭笑不在的时候，连空气都慢半拍。",
+    NAME+"，你笑一声，我就什么都不怕了。",
+    "想给谭笑打电话，又怕打扰你，只好在这里偷偷想。",
+    "谈笑风生，可没有谭笑的风生，我连笑都少了。",
+    NAME+"，你是我所有温柔的来处，也是去处。"
+  ];
+  function pickQuote(){
+    var q = quotes[Math.floor(Math.random()*quotes.length)];
+    return q.replace("{n}", count);
+  }
+
+  /* ---------- 计数持久化 ---------- */
+  var KEY = "missTanxiaoCount_v1";
+  var count = parseInt(localStorage.getItem(KEY) || "0", 10) || 0;
+  $("count").textContent = count;
+
+  function bump(){
+    count++;
+    localStorage.setItem(KEY, count);
+    $("count").textContent = count;
+    var cycle = count % 100;
+    $("bar").style.width = (cycle === 0 ? 100 : cycle) + "%";
+    if(cycle === 0 && count > 0){ celebrate(); }
+  }
+
+  /* ---------- 打字机 ---------- */
+  var fullText = NAME+"，我好想你";
+  var ti = 0, tt;
+  function typeWriter(){
+    $("bigText").innerHTML = "";
+    ti = 0;
+    clearInterval(tt);
+    tt = setInterval(function(){
+      if(ti < fullText.length){
+        $("bigText").innerHTML = fullText.slice(0,ti+1) + '<span class="caret"></span>';
+        ti++;
+      } else {
+        clearInterval(tt);
+        setTimeout(function(){ $("bigText").innerHTML = fullText; }, 700);
+      }
+    }, 240);
+  }
+
+  /* ---------- 振动 ---------- */
+  function buzz(ms){ try{ if(navigator.vibrate) navigator.vibrate(ms); }catch(e){} }
+
+  /* ---------- 语音喊谭笑（系统 TTS，无需联网） ---------- */
+  function say(text){
+    try{
+      if(window.speechSynthesis){
+        window.speechSynthesis.cancel();
+        var u = new SpeechSynthesisUtterance(text);
+        u.lang = "zh-CN"; u.rate = 0.92; u.pitch = 1.15; u.volume = 1;
+        window.speechSynthesis.speak(u);
+      } else { toast(text); }
+    }catch(e){ toast(text); }
+  }
+
+  /* ---------- 飘浮粒子 ---------- */
+  function spawnParticle(x, y, ch){
+    var p = document.createElement("div");
+    p.className = "particle";
+    p.textContent = ch || (Math.random()<0.5 ? "💕" : "💗");
+    p.style.left = x + "px";
+    p.style.top = y + "px";
+    document.body.appendChild(p);
+    setTimeout(function(){ p.remove(); }, 1600);
+  }
+  function spawnPlus(x, y){
+    var p = document.createElement("div");
+    p.className = "plus"; p.textContent = "+1 💞";
+    p.style.left = x + "px"; p.style.top = y + "px";
+    document.body.appendChild(p);
+    setTimeout(function(){ p.remove(); }, 1000);
+  }
+
+  /* ---------- Toast ---------- */
+  var toastTimer;
+  function toast(msg){
+    var t = $("toast"); t.textContent = msg; t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ t.classList.remove("show"); }, 1800);
+  }
+
+  /* ---------- 彩蛋 ---------- */
+  function showEgg(html){
+    $("eggCard").innerHTML = html;
+    $("egg").classList.add("show");
+    setTimeout(function(){ $("egg").classList.remove("show"); }, 2800);
+  }
+  function celebrate(){
+    showEgg('<div class="big">🎉💖🎉</div><h3>'+NAME+'，想念满格！</h3>'+
+            '<p>你对我的想念值已经爆表啦～<br>这一轮，一共想了谭笑 '+count+' 次。</p>');
+    buzz([60,40,60,40,120]);
+    heartRain();
+  }
+  function heartRain(){
+    for(var i=0;i<60;i++){
+      (function(idx){
+        setTimeout(function(){
+          var r = document.createElement("div");
+          r.className = "rain";
+          r.textContent = ["💖","💗","💕","🌸","✨"][Math.floor(Math.random()*5)];
+          r.style.left = Math.random()*100+"%";
+          r.style.fontSize = (18+Math.random()*22)+"px";
+          r.style.animationDuration = (2.5+Math.random()*2)+"s";
+          document.body.appendChild(r);
+          setTimeout(function(){ r.remove(); }, 5000);
+        }, idx*40);
+      })(i);
+    }
+  }
+
+  /* ---------- 开场 ---------- */
+  var opened = false;
+  $("envelope").addEventListener("click", function(){
+    if(opened) return; opened = true;
+    this.classList.add("open");
+    buzz(40);
+    var self = this;
+    setTimeout(function(){
+      $("intro").classList.add("hide");
+      setTimeout(function(){
+        $("main").classList.add("show");
+        typeWriter();
+        $("quote").textContent = pickQuote();
+      }, 700);
+    }, 500);
+  });
+
+  /* ---------- 主爱心 ---------- */
+  var heart = $("heart");
+  var lastTap = 0, combo = 0, comboTimer;
+  heart.addEventListener("pointerdown", function(e){
+    e.stopPropagation();
+    var now = Date.now();
+    if(now - lastTap < 350) combo++; else combo = 1;
+    lastTap = now;
+    clearTimeout(comboTimer);
+    comboTimer = setTimeout(function(){ combo = 0; }, 700);
+
+    heart.classList.add("pop");
+    setTimeout(function(){ heart.classList.remove("pop"); }, 130);
+    bump();
+    buzz(30);
+    spawnPlus(e.clientX-14, e.clientY-30);
+    if(combo >= 8){
+      combo = 0;
+      toast(NAME+"，你戳死我啦 😳 别戳了，我早上就想你了");
+    }
+  });
+  // 长按彩蛋
+  var pressTimer;
+  heart.addEventListener("pointerdown", function(){
+    pressTimer = setTimeout(function(){
+      showEgg('<div class="big">🔒💌</div><h3>长按解锁</h3>'+
+              '<p>'+ pickQuote() +'<br>'+NAME+'，其实……我每一天都在想你。</p>');
+      buzz([50,30,50]);
+    }, 700);
+  });
+  ["pointerup","pointerleave","pointercancel"].forEach(function(ev){
+    heart.addEventListener(ev, function(){ clearTimeout(pressTimer); });
+  });
+
+  /* ---------- 点空白处飘爱心 ---------- */
+  document.body.addEventListener("pointerdown", function(e){
+    if(opened && $("main").classList.contains("show")){
+      if(e.target === heart || heart.contains(e.target)) return;
+      spawnParticle(e.clientX-12, e.clientY-12);
+    }
+  });
+
+  /* ---------- 按钮 ---------- */
+  $("callBtn").addEventListener("click", function(){
+    say(NAME+"，我好想你");
+    toast("已经在喊谭笑啦 🔊 " + NAME + "，我好想你");
+  });
+  $("whisperBtn").addEventListener("click", function(){
+    $("quote").textContent = pickQuote();
+    buzz(20);
+  });
+  $("shareBtn").addEventListener("click", function(){
+    var text = NAME+"，我好想你 💖\n（今天已经想了你 "+count+" 次）\n—— 来自一颗想谭笑的星球";
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(function(){ toast("已复制，去粘贴给谭笑吧 📋"); })
+        .catch(function(){ toast(text); });
+    } else { toast(text); }
+  });
+
+  /* ---------- 摇一摇 ---------- */
+  var shakeBtn = $("shakeBtn");
+  var listening = false;
+  function onMotion(e){
+    var a = e.accelerationIncludingGravity || e.acceleration;
+    if(!a) return;
+    var mag = Math.abs(a.x||0)+Math.abs(a.y||0)+Math.abs(a.z||0);
+    if(mag > 32){
+      clearTimeout(onMotion._t);
+      onMotion._t = setTimeout(function(){
+        bump(); spawnParticle(window.innerWidth/2-12, window.innerHeight/2-12, "💞");
+        toast("摇出一颗想谭笑的心 💗");
+        buzz([40,30,40]);
+      }, 300);
+    }
+  }
+  shakeBtn.addEventListener("click", function(){
+    if(listening){ toast("已经在听啦，摇手机试试～"); return; }
+    var DME = window.DeviceMotionEvent;
+    if(DME && typeof DME.requestPermission === "function"){
+      DME.requestPermission().then(function(state){
+        if(state === "granted"){ startShake(); }
+        else toast("没拿到晃动权限，换个方式戳戳谭笑也行 💕");
+      }).catch(function(){ toast("没拿到晃动权限 💕"); });
+    } else if(window.DeviceMotionEvent){
+      startShake();
+    } else {
+      toast("这台设备不支持摇一摇，戳戳爱心也一样 💗");
+    }
+  });
+  function startShake(){
+    listening = true;
+    window.addEventListener("devicemotion", onMotion);
+    toast("摇一摇已开启 📳 用力摇手机！");
+  }
+
+  /* 防误触：双击缩放关闭 */
+  document.addEventListener("gesturestart", function(e){ e.preventDefault(); });
+})();
+</script>
+</body>
+</html>
