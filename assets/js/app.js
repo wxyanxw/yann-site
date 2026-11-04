@@ -323,6 +323,10 @@ new URDFImporter({
 window.addEventListener('hashchange',route);
 document.querySelectorAll('[data-placeholder]').forEach(x=>x.addEventListener('click',()=>toast(`${x.dataset.placeholder}正在准备中，先来机械臂实验室探索一下吧。`)));
 document.querySelectorAll('.current-year').forEach(x=>x.textContent=new Date().getFullYear());
+let letterClicks=0;
+$('letter-envelope').addEventListener('click',()=>{
+  if(++letterClicks===10){letterClicks=0;window.location.assign('letter.html');}
+});
 document.querySelectorAll('[data-axes]').forEach(x=>x.addEventListener('click',()=>selectPreset(({1:'single',3:'planar3',6:'industrial6',7:'nero7'})[x.dataset.axes])));
 $('model-preset').addEventListener('change',()=>selectPreset($('model-preset').value));
 $('edit-geometry').addEventListener('click',()=>openGeometry());
