@@ -40,28 +40,21 @@ export class RobotScene {
     this.scene.add(key);
     const rim = new THREE.DirectionalLight(0xb6c6eb, 2.5); rim.position.set(-4, 3, -3); this.scene.add(rim);
     const orange = new THREE.PointLight(0xfead72, 3, 7); orange.position.set(1, 2, 2); this.scene.add(orange);
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), new THREE.MeshStandardMaterial({color:hero ? '#08090c' : '#06080b', roughness: .95, metalness:.1}));
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), new THREE.MeshStandardMaterial({color:hero ? '#101114' : '#14151a', roughness: .95, metalness:.1}));
     floor.rotation.x = -Math.PI / 2; floor.position.y = -.012; floor.receiveShadow = true; this.scene.add(floor);
     this.grid = new THREE.GridHelper(12, 48, 0x3b3a40, hero ? 0x24252a : 0x292b33);
     this.grid.material.transparent = true; this.grid.material.opacity = hero ? .3 : .34; this.grid.position.y = -.004; this.scene.add(this.grid);
     // A restrained platform with mounting screws grounds the model visually.
     this.materials = {
-      orange: new THREE.MeshStandardMaterial({color:0xe78142, roughness:.3, metalness:.4}),
-      white: new THREE.MeshStandardMaterial({color:0xe3e6e9, roughness:.28, metalness:.22}),
-      dark: new THREE.MeshStandardMaterial({color:0x292e38, roughness:.4, metalness:.45}),
-      metal: new THREE.MeshStandardMaterial({color:0x9ba6b4, roughness:.23, metalness:.72}),
-      inset: new THREE.MeshStandardMaterial({color:0x171c24, roughness:.48, metalness:.3}),
+      orange: new THREE.MeshStandardMaterial({color:0xe67834, roughness:.38, metalness:.22}),
+      white: new THREE.MeshStandardMaterial({color:0xe5e6e4, roughness:.34, metalness:.35}),
+      dark: new THREE.MeshStandardMaterial({color:0x24262c, roughness:.42, metalness:.55}),
+      metal: new THREE.MeshStandardMaterial({color:0x8f9299, roughness:.27, metalness:.85}),
     };
     this.robot = new THREE.Group(); this.scene.add(this.robot);
     this.linkGeo = new THREE.BoxGeometry(1, 1, 1);
     this.cylinderGeo = new THREE.CylinderGeometry(1, 1, 1, 32);
     this.jointGeo = new THREE.CylinderGeometry(1, 1, 1, 48);
-    this.sphereGeo = new THREE.SphereGeometry(1,32,20);
-    this.ringGeo = new THREE.TorusGeometry(1,.045,8,48);this.ringGeo.rotateX(Math.PI/2);
-    this.shellGeo = new THREE.LatheGeometry([
-      [0,-.5],[.55,-.485],[.82,-.45],[.97,-.37],[1,-.25],
-      [1,.25],[.94,.38],[.75,.46],[.45,.49],[0,.5],
-    ].map(([x,y])=>new THREE.Vector2(x,y)),40);
     this.visualGeometries=[];this.visualMaterials=[];
     this.buildRobot(engine);
     this.trailPositions = new Float32Array(500 * 3);
@@ -82,11 +75,10 @@ export class RobotScene {
 
   createSegment(parent,slim,material=this.materials.white) {
     const group=new THREE.Group();parent.add(group);
-    const body=this.mesh(this.shellGeo,material,group,[slim,1,slim*.84],[0,0,0]);
-    const stripe=this.mesh(this.shellGeo,this.materials.inset,group,[slim*.42,.64,slim*.16],[0,0,slim*.81]);
-    const spine=this.mesh(this.shellGeo,this.materials.metal,group,[slim*.22,.75,slim*.12],[0,0,-slim*.83]);
-    stripe.visible=spine.visible=this.detailed;
-    return {group,body,stripe,spine,slim};
+    const body=this.mesh(this.linkGeo,material,group,[slim*1.6,1,slim*1.35],[0,0,0]);
+    const stripe=this.mesh(this.linkGeo,this.materials.dark,group,[slim*1.64,.68,slim*.48],[0,0,0]);
+    stripe.visible=this.detailed;
+    return {group,body,stripe,slim};
   }
 
   placeSegment(segment,a,b) {
@@ -107,39 +99,27 @@ export class RobotScene {
     const m=this.materials,count=Math.min(engine.n,RENDER_LIMIT);
     this.detailed=count<=16;
     const native=engine.definition.joints.some(j=>j.kind==='urdf');
-    this.slim=native?.043:.057;
+    this.slim=native?.025:.045;
     const sourceVisuals=engine.definition.renderVisuals||[];
     const visualAnchors=new Set(sourceVisuals.map(v=>v.anchor));
     this.base=new THREE.Group();this.robot.add(this.base);
     this.base.visible=!visualAnchors.has(-1);
-    const baseWidth=native?.25:.4;
-    this.mesh(this.shellGeo,m.dark,this.base,[baseWidth*.61,.034,baseWidth*.61],[0,.017,0]);
-    this.mesh(this.cylinderGeo,m.metal,this.base,[baseWidth*.42,.007,baseWidth*.42],[0,.036,0]);
-    this.mesh(this.cylinderGeo,m.dark,this.base,[baseWidth*.3,.058,baseWidth*.3],[0,.065,0]);
-    this.mesh(this.ringGeo,m.orange,this.base,[baseWidth*.303,baseWidth*.303,baseWidth*.303],[0,.086,0]);
+    const baseWidth=native?.23:.4;
+    this.mesh(this.linkGeo,m.dark,this.base,[baseWidth,.025,baseWidth],[0,.012,0]);
+    this.mesh(this.cylinderGeo,m.orange,this.base,[baseWidth*.29,.052,baseWidth*.29],[0,.05,0]);
+    this.mesh(this.cylinderGeo,m.dark,this.base,[baseWidth*.23,.004,baseWidth*.23],[0,.078,0]);
     for(const x of [-1,1])for(const z of [-1,1]) {
-      this.mesh(this.cylinderGeo,m.inset,this.base,[.007,.004,.007],[x*baseWidth*.33,.036,z*baseWidth*.33]);
-      this.mesh(this.linkGeo,m.metal,this.base,[.008,.001,.0015],[x*baseWidth*.33,.0385,z*baseWidth*.33]);
+      this.mesh(this.cylinderGeo,m.metal,this.base,[.005,.003,.005],[x*baseWidth*.36,.025,z*baseWidth*.36]);
     }
-    this.mount=this.createSegment(this.base,native?.062:.075,m.white);
+    this.mount=this.createSegment(this.base,native?.032:.05,m.orange);
     for(let i=0;i<count;i++) {
       const joint=new THREE.Group();this.robot.add(joint);this.joints.push(joint);
       joint.visible=!visualAnchors.has(i);
-      const r=native?(i<2?.058:i<4?.051:i<6?.037:.028):.073;
-      this.mesh(this.sphereGeo,m.white,joint,[r,r*.95,r],[0,0,0]);
-      // Covers sit along the real joint axis; only their surface shape is decorative.
-      for(const side of [-1,1]) {
-        this.mesh(this.cylinderGeo,m.inset,joint,[r*.69,r*.15,r*.69],[0,side*r*.84,0]);
-        this.mesh(this.cylinderGeo,m.metal,joint,[r*.54,r*.17,r*.54],[0,side*r*.89,0]);
-        this.mesh(this.ringGeo,m.orange,joint,[r*.65,r*.65,r*.65],[0,side*r*.94,0]);
-        this.mesh(this.cylinderGeo,m.dark,joint,[r*.24,r*.025,r*.24],[0,side*r*.988,0]);
-        for(let bolt=0;bolt<(this.detailed?4:0);bolt++) {
-          const angle=bolt*Math.PI/2;
-          this.mesh(this.cylinderGeo,m.inset,joint,[r*.045,r*.022,r*.045],[Math.cos(angle)*r*.41,side*r*.984,Math.sin(angle)*r*.41]);
-        }
-      }
-      const slim=native?(i<2?.043:i<4?.036:.026):this.slim;
-      const segments=[this.createSegment(this.robot,slim),this.createSegment(this.robot,slim)];
+      const slim=this.slim,material=i%3===1?m.orange:m.white;
+      this.mesh(this.jointGeo,material,joint,[slim*1.6,slim*2.4,slim*1.6],[0,0,0]);
+      this.mesh(this.jointGeo,m.dark,joint,[slim,slim*2.5,slim],[0,0,0]);
+      this.mesh(this.jointGeo,m.metal,joint,[slim*.45,slim*2.55,slim*.45],[0,0,0]);
+      const segments=[this.createSegment(this.robot,slim,material),this.createSegment(this.robot,slim,material)];
       segments.forEach(segment=>segment.fallback=!visualAnchors.has(i));this.linkSegments.push(segments);
     }
     for(const visual of sourceVisuals) {
@@ -158,12 +138,8 @@ export class RobotScene {
     this.end=new THREE.Group();this.robot.add(this.end);
     this.endIllustrative=!visualAnchors.has(engine.n-1);
     if(native) {
-      const flange=this.mesh(this.cylinderGeo,m.dark,this.end,[.026,.016,.026],[0,0,0]);flange.rotation.x=Math.PI/2;
-      const face=this.mesh(this.cylinderGeo,m.metal,this.end,[.022,.003,.022],[0,0,.009]);face.rotation.x=Math.PI/2;
-      for(let i=0;i<6;i++) {
-        const angle=i*Math.PI/3;
-        this.mesh(this.sphereGeo,m.inset,this.end,[.002,.002,.001],[Math.cos(angle)*.016,Math.sin(angle)*.016,.011]);
-      }
+      const flange=this.mesh(this.cylinderGeo,m.orange,this.end,[.017,.025,.017],[0,0,0]);flange.rotation.x=Math.PI/2;
+      const face=this.mesh(this.cylinderGeo,m.metal,this.end,[.012,.003,.012],[0,0,.013]);face.rotation.x=Math.PI/2;
     } else for(const side of [-1,1]) {
       this.mesh(this.linkGeo,m.metal,this.end,[.018,.028,.09],[side*.035,0,.04]);
       this.mesh(this.linkGeo,m.dark,this.end,[.025,.028,.022],[side*.025,0,.085]);
