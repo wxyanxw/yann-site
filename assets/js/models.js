@@ -50,7 +50,7 @@ export function createGeneric(n) {
 export function resizeDefinition(definition,n) {
   validateDOF(n);
   const out=structuredClone(definition),old=out.joints.length;
-  out.id='custom';out.label=definition.joints.some(j=>j.kind==='urdf')?'NERO 扩展构型':'自定义 DH 构型';
+  out.id='custom';out.label=definition.joints.some(j=>j.kind==='urdf')?`${definition.label.replace(/ 扩展构型$/,'')} 扩展构型`:'自定义 DH 构型';
   out.joints=out.joints.slice(0,n);
   for(let i=old;i<n;i++) {
     const joint=dhJoint(i,{a:null,alpha:null,d:null,offset:null,configured:false});
@@ -59,6 +59,7 @@ export function resizeDefinition(definition,n) {
     out.joints.push(joint);
   }
   if(n!==old)out.tool=[];
+  if(n<old){out.extraBodies=(out.extraBodies||[]).filter(b=>b.anchor<n);out.renderVisuals=(out.renderVisuals||[]).filter(v=>v.anchor<n);}
   out.source=out.joints.some(j=>j.kind==='urdf')?'URDF + DH':'标准 DH';return out;
 }
 
@@ -68,6 +69,7 @@ const vector=(values,name,length=3)=>{
   values.forEach(v=>finite(v,name));
 };
 const pose=(value,name)=>{if(!value)throw new Error(`${name} 未定义。`);vector(value.xyz,`${name}.xyz`);vector(value.rpy,`${name}.rpy`);};
+const attachment=(value,name)=>{vector(value,name,16);if(value[12]!==0||value[13]!==0||value[14]!==0||value[15]!==1)throw new Error(`${name} 不是有效齐次变换。`);};
 
 export function validateDefinition(definition) {
   if(!definition||!Array.isArray(definition.joints))throw new Error('模型缺少关节定义。');
@@ -80,19 +82,34 @@ export function validateDefinition(definition) {
       pose(joint.origin,`${name}.origin`);vector(joint.axis,`${name}.axis`);vector(joint.com,`${name}.com`);
       if(Math.hypot(...joint.axis)<1e-12)throw new Error(`${name} 的旋转轴不能为零。`);
       if(joint.inertia){for(const key of ['ixx','ixy','ixz','iyy','iyz','izz'])finite(joint.inertia[key],`${name}.inertia.${key}`);}
+      if(joint.motion&&!['revolute','prismatic'].includes(joint.motion))throw new Error(`${name} 不支持该运动类型。`);
     } else throw new Error(`${name} 的关节类型不支持。`);
     for(const prefix of joint.prefix||[])pose(prefix,`${name}.prefix`);
     for(const key of ['lower','upper','q0','maxVelocity','maxTorque','mass'])finite(joint[key],`${name}.${key}`);
     if(joint.lower>=joint.upper)throw new Error(`${name} 的下限必须小于上限。`);
-    if(joint.q0<joint.lower||joint.q0>joint.upper)throw new Error(`${name} 的初始角度超出关节限位。`);
+    if(!joint.continuous&&(joint.q0<joint.lower||joint.q0>joint.upper))throw new Error(`${name} 的初始角度超出关节限位。`);
     if(joint.maxVelocity<=0||joint.maxTorque<=0||joint.mass<0)throw new Error(`${name} 的速度/力矩上限须大于零，质量须非负。`);
   });
   for(const tool of definition.tool||[])pose(tool,'工具');
+  for(const body of definition.extraBodies||[]) {
+    if(!Number.isInteger(body.anchor)||body.anchor<0||body.anchor>=definition.joints.length)throw new Error('固定连杆的 anchor 超出关节链。');
+    attachment(body.attachment,'固定连杆 attachment');vector(body.com,'固定连杆 COM');finite(body.mass,'固定连杆 mass');if(body.mass<0)throw new Error('质量不能为负。');
+  }
+  for(const visual of definition.renderVisuals||[]) {
+    if(!Number.isInteger(visual.anchor)||visual.anchor< -1||visual.anchor>=definition.joints.length)throw new Error('visual anchor 超出关节链。');
+    attachment(visual.attachment,'visual attachment');pose(visual.origin,'visual origin');
+    if(visual.type==='box'){vector(visual.size,'box.size');if(visual.size.some(v=>v<=0))throw new Error('box 尺寸须大于零。');}
+    else if(['sphere','cylinder'].includes(visual.type)){finite(visual.radius,'visual radius');if(visual.radius<=0)throw new Error('半径须大于零。');if(visual.type==='cylinder'){finite(visual.length,'cylinder length');if(visual.length<=0)throw new Error('长度须大于零。');}}
+    else throw new Error('不支持的 visual 几何。');
+    if(visual.color){vector(visual.color,'visual color',4);if(visual.color.some(v=>v<0||v>1))throw new Error('材质颜色须在 [0, 1] 内。');}
+  }
   return definition;
 }
 
 export function modelFingerprint(definition) {
   let hash=2166136261;
-  for(const c of JSON.stringify({base:definition.base,joints:definition.joints,tool:definition.tool}))hash=Math.imul(hash^c.charCodeAt(0),16777619)>>>0;
+  const data={base:definition.base,joints:definition.joints,tool:definition.tool};
+  if(definition.extraBodies?.length)data.extraBodies=definition.extraBodies;
+  for(const c of JSON.stringify(data))hash=Math.imul(hash^c.charCodeAt(0),16777619)>>>0;
   return hash.toString(16);
 }

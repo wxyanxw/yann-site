@@ -47,7 +47,7 @@ try {
   step('构型重置/刷新保留，关节限位校验，取消编辑不改模型');
 
   await selectPreset('nero7');const nero=await active();
-  assert.equal(nero.joints.length,7);assert.equal(nero.joints[5].upper,.95);assert.equal(await page.locator('#viewport-model-label').innerText(),'NERO / URDF SKELETON');
+  assert.equal(nero.joints.length,7);assert.equal(nero.joints[5].upper,.95);assert.equal(await page.locator('#viewport-model-label').innerText(),'NERO / PRECISION SHELL');
   within(Number(await page.locator('#joint-5').getAttribute('max')),.95*180/Math.PI);
   await page.locator('#edit-geometry').click();
   assert.match(await page.locator('#geometry-summary').innerText(),/2 rad\/s、30 N·m/);

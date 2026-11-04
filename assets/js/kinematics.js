@@ -15,6 +15,13 @@ export function rotation(axis,q) {
     t*x*z-s*y,t*y*z+s*x,t*z*z+c,0,0,0,0,1];
 }
 
+export function jointTransform(joint,q) {
+  if(joint.motion!=='prismatic')return rotation(joint.axis,q);
+  const frame=identity(),norm=Math.hypot(...joint.axis);
+  frame[3]=joint.axis[0]*q/norm;frame[7]=joint.axis[1]*q/norm;frame[11]=joint.axis[2]*q/norm;
+  return frame;
+}
+
 export function poseTransform({xyz=[0,0,0],rpy=[0,0,0]}={}) {
   const [r,p,y]=rpy;
   const out=multiply(multiply(rotation([0,0,1],y),rotation([0,1,0],p)),rotation([1,0,0],r));
@@ -49,7 +56,7 @@ export function forwardChain(definition,q) {
     const origin=position(frame);preFrames.push(frame);
     const sourceAxis=joint.kind==='dh'?[0,0,1]:joint.axis;
     origins.push(origin);axes.push(transformDirection(frame,sourceAxis.map(v=>v/Math.hypot(...sourceAxis))));
-    frame=multiply(frame,joint.kind==='dh'?standardDH(joint,q[i]):rotation(joint.axis,q[i]));
+    frame=multiply(frame,joint.kind==='dh'?standardDH(joint,q[i]):jointTransform(joint,q[i]));
     frames.push(frame);
     if(joint.kind==='urdf')centers.push(transformPoint(frame,joint.com));
     else centers.push(origin.map((x,k)=>(x+position(frame)[k])*.5));

@@ -1,5 +1,5 @@
 import { createGeneric, validateDefinition } from './models.js';
-import { forwardChain, poseTransform, position, multiply } from './kinematics.js';
+import { forwardChain, poseTransform, position, multiply, transformPoint } from './kinematics.js';
 export { validateDOF, MEMORY_BUDGET } from './models.js';
 export const DT = 1 / 120;
 export const RENDER_LIMIT = 128;
@@ -15,6 +15,7 @@ export class ArmPhysics {
     this.inertia=new Float64Array(this.n);this.lengths=new Float64Array(this.n);
     this.points=new Float64Array((this.n+1)*3);this.axes=new Float64Array(this.n*3);
     this.centers=new Float64Array(this.n*3);this.gravityTorque=new Float64Array(this.n);
+    this.masses=new Float64Array(this.n);
     this.mode='position';this.gravity=true;this.time=0;this.contacts=0;
     this.forward();this.estimateInertia();
   }
@@ -24,7 +25,7 @@ export class ArmPhysics {
     // Backward mass moments avoid O(N²) storage or work.
     let mass=0;const sum=[0,0,0],second=[0,0,0,0,0,0];
     for(let i=this.n-1;i>=0;i--) {
-      const joint=this.definition.joints[i],m=joint.mass,k=i*3;
+      const joint=this.definition.joints[i],m=this.masses[i],k=i*3;
       const c=Array.from(this.centers.slice(k,k+3)),o=Array.from(this.points.slice(k,k+3)),a=Array.from(this.axes.slice(k,k+3));
       mass+=m;for(let d=0;d<3;d++)sum[d]+=m*c[d];
       second[0]+=m*c[0]*c[0];second[1]+=m*c[1]*c[1];second[2]+=m*c[2]*c[2];
@@ -33,13 +34,13 @@ export class ArmPhysics {
       const ao=a.reduce((v,x,d)=>v+x*o[d],0),as=a.reduce((v,x,d)=>v+x*sum[d],0);
       const axial=a[0]*a[0]*second[0]+a[1]*a[1]*second[1]+a[2]*a[2]*second[2]+2*(a[0]*a[1]*second[3]+a[0]*a[2]*second[4]+a[1]*a[2]*second[5])-2*ao*as+mass*ao*ao;
       let local=.004;
-      if(joint.inertia) {
+      if(joint.inertia&&joint.motion!=='prismatic') {
         const inv=poseTransform({rpy:(joint.inertialRPY||[0,0,0]),xyz:[0,0,0]});
         // Rotate the source joint axis into the inertial frame (R transpose).
-        const axis=joint.axis,[x,y,z]=[inv[0]*axis[0]+inv[4]*axis[1]+inv[8]*axis[2],inv[1]*axis[0]+inv[5]*axis[1]+inv[9]*axis[2],inv[2]*axis[0]+inv[6]*axis[1]+inv[10]*axis[2]];
+        const axis=joint.axis.map(v=>v/Math.hypot(...joint.axis)),[x,y,z]=[inv[0]*axis[0]+inv[4]*axis[1]+inv[8]*axis[2],inv[1]*axis[0]+inv[5]*axis[1]+inv[9]*axis[2],inv[2]*axis[0]+inv[6]*axis[1]+inv[10]*axis[2]];
         const I=joint.inertia;local=x*x*I.ixx+y*y*I.iyy+z*z*I.izz+2*(x*y*I.ixy+x*z*I.ixz+y*z*I.iyz);
       }
-      this.inertia[i]=Math.max(.003,trace-axial+local);
+      this.inertia[i]=joint.motion==='prismatic'?Math.max(.01,mass):Math.max(.003,trace-axial+local);
     }
   }
 
@@ -49,9 +50,10 @@ export class ArmPhysics {
     if(!arr.every(x=>typeof x==='number'&&Number.isFinite(x)))throw new Error('所有关节值必须是有限数值。');
     arr.forEach((x,i)=>{
       const joint=this.definition.joints[i];
-      if(mode==='position'&&(x<joint.lower||x>joint.upper))throw new Error(`J${i+1} 关节角度须位于 [${joint.lower.toFixed(4)}, ${joint.upper.toFixed(4)}] rad 内。`);
-      if(mode==='velocity'&&Math.abs(x)>joint.maxVelocity)throw new Error(`J${i+1} 目标角速度须位于 [-${joint.maxVelocity}, ${joint.maxVelocity}] rad/s 内。`);
-      if(mode==='torque'&&Math.abs(x)>joint.maxTorque)throw new Error(`J${i+1} 关节力矩须位于 [-${joint.maxTorque}, ${joint.maxTorque}] N·m 内。`);
+      const linear=joint.motion==='prismatic';
+      if(mode==='position'&&!joint.continuous&&(x<joint.lower||x>joint.upper))throw new Error(`J${i+1} ${linear?'关节位移':'关节角度'}须位于 [${joint.lower.toFixed(4)}, ${joint.upper.toFixed(4)}] ${linear?'m':'rad'} 内。`);
+      if(mode==='velocity'&&Math.abs(x)>joint.maxVelocity)throw new Error(`J${i+1} 目标${linear?'速度':'角速度'}须位于 [-${joint.maxVelocity}, ${joint.maxVelocity}] ${linear?'m/s':'rad/s'} 内。`);
+      if(mode==='torque'&&Math.abs(x)>joint.maxTorque)throw new Error(`J${i+1} 关节${linear?'力':'力矩'}须位于 [-${joint.maxTorque}, ${joint.maxTorque}] ${linear?'N':'N·m'} 内。`);
     });
     return arr;
   }
@@ -66,15 +68,21 @@ export class ArmPhysics {
     this.chain=forwardChain(this.definition,this.q);
     for(let i=0;i<this.n;i++) {
       const k=i*3;this.points.set(this.chain.origins[i],k);this.axes.set(this.chain.axes[i],k);this.centers.set(this.chain.centers[i],k);
+      this.masses[i]=this.definition.joints[i].mass;
       const next=i+1<this.n?this.chain.origins[i+1]:this.chain.tip;
       this.lengths[i]=Math.hypot(...next.map((x,d)=>x-this.chain.origins[i][d]));
     }
     this.points.set(this.chain.tip,this.n*3);
+    for(const body of this.definition.extraBodies||[]) {
+      const i=body.anchor,k=i*3,center=transformPoint(multiply(this.chain.frames[i],body.attachment),body.com),total=this.masses[i]+body.mass;
+      if(total>0)for(let d=0;d<3;d++)this.centers[k+d]=(this.centers[k+d]*this.masses[i]+center[d]*body.mass)/total;
+      this.masses[i]=total;
+    }
     let sumX=0,sumZ=0,mass=0;
     for(let i=this.n-1;i>=0;i--) {
-      const k=i*3,m=this.definition.joints[i].mass;mass+=m;sumX+=m*this.centers[k];sumZ+=m*this.centers[k+2];
+      const k=i*3,m=this.masses[i];mass+=m;sumX+=m*this.centers[k];sumZ+=m*this.centers[k+2];
       const rx=sumX-mass*this.points[k],rz=sumZ-mass*this.points[k+2];
-      this.gravityTorque[i]=this.gravity?9.81*(rz*this.axes[k]-rx*this.axes[k+2]):0;
+      this.gravityTorque[i]=this.gravity?(this.definition.joints[i].motion==='prismatic'?-9.81*mass*this.axes[k+1]:9.81*(rz*this.axes[k]-rx*this.axes[k+2])):0;
     }
     return this.points;
   }
@@ -104,7 +112,7 @@ export class ArmPhysics {
         if(this.mode==='velocity')command=inertia*18*(this.velocity[i]-this.dq[i])-this.gravityTorque[i];
         const accel=(clamp(command,-joint.maxTorque,joint.maxTorque)+this.gravityTorque[i]-.04*this.dq[i])/inertia;
         this.dq[i]=clamp(this.dq[i]+accel*h,-joint.maxVelocity,joint.maxVelocity);this.q[i]+=this.dq[i]*h;
-        if(this.q[i]<joint.lower||this.q[i]>joint.upper){this.q[i]=clamp(this.q[i],joint.lower,joint.upper);this.dq[i]=0;}
+        if(!joint.continuous&&(this.q[i]<joint.lower||this.q[i]>joint.upper)){this.q[i]=clamp(this.q[i],joint.lower,joint.upper);this.dq[i]=0;}
       }
       this.forward();
       let contact=false;

@@ -50,7 +50,7 @@ self.onmessage = async ({data}) => {
     self.armStep = checkpoint;
     self.armTime = () => engine.time;
     self.armDOF = data.dof;
-    self.armLimits = () => engine.definition.joints.map(j=>[j.lower,j.upper]);
+    self.armLimits = () => engine.definition.joints.map(j=>j.continuous?[-Infinity,Infinity]:[j.lower,j.upper]);
     self.armGeometry = JSON.stringify(engine.definition);
     self.armPose = () => engine.getNativePose();
     await pyodide.runPythonAsync(`

@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<robot name="Precision &amp; Motion">
+  <material name="pearl"><color rgba="0.7 0.8 0.9 1"/></material>
+  <link name="world"/>
+  <link name="base"><visual><geometry><cylinder radius="0.08" length="0.1"/></geometry><material name="pearl"/></visual></link>
+  <joint name="mount" type="fixed"><parent link="world"/><child link="base"/><origin xyz="1 0 0" rpy="0 0 1.5707963267948966"/></joint>
+  <link name="slider"><inertial><mass value="2"/><inertia ixx="0.1" iyy="0.1" izz="0.1" ixy="0" ixz="0" iyz="0"/></inertial><visual><origin xyz="0.02 0 0.1" rpy="0.1 0.2 0.3"/><geometry><box size="0.04 0.04 0.1"/></geometry></visual></link>
+  <joint name="slide" type="prismatic"><parent link="base"/><child link="slider"/><origin xyz="0 0 1"/><axis xyz="2 0 0"/><limit lower="0" upper="0.5" velocity="0.2" effort="40"/></joint>
+  <link name="adapter"><inertial><origin xyz="0.1 0 0"/><mass value="1"/><inertia ixx="0.01" iyy="0.02" izz="0.03" ixy="0" ixz="0" iyz="0"/></inertial></link>
+  <joint name="adapter_mount" type="fixed"><parent link="slider"/><child link="adapter"/><origin xyz="0 0.2 0"/></joint>
+  <link name="rotor"><visual><geometry><sphere radius="0.045"/></geometry><material><color rgba="0.8 0.4 0.2 1"/></material></visual></link>
+  <joint name="spin" type="continuous"><parent link="adapter"/><child link="rotor"/><origin xyz="0 0 0.3"/><axis xyz="0 0 3"/></joint>
+  <link name="tool"/>
+  <joint name="tool_mount" type="fixed"><parent link="rotor"/><child link="tool"/><origin xyz="0.1 0 0"/></joint>
+  <link name="other_arm"/>
+  <joint name="other" type="revolute"><parent link="base"/><child link="other_arm"/><axis xyz="0 1 0"/><limit lower="-1" upper="1" velocity="1" effort="10"/></joint>
+  <link name="finger"/>
+  <joint name="mimic_finger" type="revolute"><parent link="other_arm"/><child link="finger"/><axis xyz="0 1 0"/><limit lower="-1" upper="1" velocity="1" effort="10"/><mimic joint="other"/></joint>
+</robot>
