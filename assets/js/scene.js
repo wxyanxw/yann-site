@@ -22,7 +22,7 @@ export class RobotScene {
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
     this.controls.dampingFactor = .075;
-    this.controls.minDistance = 1.3;
+    this.controls.minDistance = .3;
     this.controls.maxDistance = 12;
     this.controls.maxPolarAngle = Math.PI * .49;
     this.resetCamera();
@@ -70,47 +70,48 @@ export class RobotScene {
 
   buildRobot(engine) {
     this.engine = engine;
-    // Shared geometries/materials are kept; only obsolete meshes are removed.
-    this.robot.clear(); this.joints = [];
-    const m = this.materials;
-    this.mesh(this.linkGeo, m.dark, this.robot, [.66,.055,.66], [0,.027,0]);
-    for (const x of [-.27,.27]) for (const z of [-.27,.27]) this.mesh(this.cylinderGeo,m.metal,this.robot,[.024,.01,.024],[x,.06,z]);
-    this.mesh(this.cylinderGeo,m.dark,this.robot,[.23,.15,.23],[0,.13,0]);
-    this.mesh(this.cylinderGeo,m.orange,this.robot,[.2,.24,.2],[0,.3,0]);
-    this.mesh(this.cylinderGeo,m.metal,this.robot,[.2,.025,.2],[0,.43,0]);
-    let parent = this.robot;
-    const count = Math.min(engine.n, RENDER_LIMIT), slim = Math.max(.014, engine.n > 7 ? .09 * 6 / engine.n : .09);
-    for (let i = 0; i < count; i++) {
-      const joint = new THREE.Group();
-      joint.position.set(i === 0 ? 0 : engine.lengths[i - 1],i === 0 ? .49 : 0,0);
-      parent.add(joint); this.joints.push(joint);
-      const length = engine.lengths[i];
-      const hub = this.mesh(this.jointGeo,i % 3 === 1 ? m.orange : m.white,joint,[slim * 1.55,slim * 2.4,slim * 1.55],[0,0,0]);
-      if (i > 0) hub.rotation.x = Math.PI / 2;
-      const cap = this.mesh(this.jointGeo,m.dark,joint,[slim * .95,slim * 2.48,slim * .95],[0,0,0]);
-      if (i > 0) cap.rotation.x = Math.PI / 2;
-      const pin = this.mesh(this.jointGeo,m.metal,joint,[slim * .43,slim * 2.52,slim * .43],[0,0,0]);
-      if (i > 0) pin.rotation.x = Math.PI / 2;
-      this.mesh(this.linkGeo,i === 0 || i % 3 === 1 ? m.orange : m.white,joint,[Math.max(length - slim * .7, .006),slim * 1.9,slim * 1.55],[length * .5,0,0]);
-      if (length > .18) {
-        this.mesh(this.linkGeo,m.dark,joint,[length * .68,slim * .5,slim * 1.58],[length * .5,0,0]);
-        this.mesh(this.linkGeo,m.metal,joint,[length * .5,.009,slim * .7],[length * .5,slim * .965,0]);
+    this.robot.clear();this.joints=[];this.linkSegments=[];
+    const m=this.materials,count=Math.min(engine.n,RENDER_LIMIT);
+    const native=engine.definition.joints.some(j=>j.kind==='urdf');
+    this.slim=native ? .025 : .045;
+    const baseWidth=native ? .23 : .4,baseHeight=engine.definition.base.xyz[1];
+    this.mesh(this.linkGeo,m.dark,this.robot,[baseWidth,.025,baseWidth],[0,.012,0]);
+    this.mesh(this.cylinderGeo,m.orange,this.robot,[baseWidth*.29,Math.max(.035,baseHeight-.025),baseWidth*.29],[0,baseHeight*.5,0]);
+    for(let i=0;i<count;i++) {
+      const joint=new THREE.Group();this.robot.add(joint);this.joints.push(joint);
+      const slim=this.slim;
+      this.mesh(this.jointGeo,i%3===1?m.orange:m.white,joint,[slim*1.6,slim*2.4,slim*1.6],[0,0,0]);
+      this.mesh(this.jointGeo,m.dark,joint,[slim,slim*2.5,slim],[0,0,0]);
+      this.mesh(this.jointGeo,m.metal,joint,[slim*.45,slim*2.55,slim*.45],[0,0,0]);
+      const segments=[];
+      for(let leg=0;leg<2;leg++) {
+        const body=this.mesh(this.linkGeo,i%3===1?m.orange:m.white,this.robot,[1,1,1],[0,0,0]);
+        const stripe=this.mesh(this.linkGeo,m.dark,this.robot,[1,1,1],[0,0,0]);
+        segments.push({body,stripe});
       }
-      parent = joint;
+      this.linkSegments.push(segments);
     }
-    const end = new THREE.Group(); end.position.x = engine.lengths[count - 1]; parent.add(end);
-    this.mesh(this.jointGeo,m.dark,end,[slim,.1,slim],[.045,0,0]).rotation.z = Math.PI / 2;
-    for (const z of [-1,1]) {
-      this.mesh(this.linkGeo,m.metal,end,[.13,.035,.025],[.13,0,z * .075]);
-      this.mesh(this.linkGeo,m.dark,end,[.03,.035,.08],[.2,0,z * .05]);
+    this.end=new THREE.Group();this.robot.add(this.end);
+    // Skeleton marker for URDF; a gripper is only decorative on generic DH models.
+    if(native)this.mesh(this.jointGeo,m.orange,this.end,[.017,.025,.017],[0,0,0]);
+    else for(const side of [-1,1]) {
+      this.mesh(this.linkGeo,m.metal,this.end,[.018,.028,.09],[side*.035,0,.04]);
+      this.mesh(this.linkGeo,m.dark,this.end,[.025,.028,.022],[side*.025,0,.085]);
     }
     this.update(false);
     if (this.trail) this.clearTrail();
+    this.resetCamera();
   }
 
   resetCamera() {
-    this.camera.position.set(this.hero ? 2.65 : 2.8, this.hero ? 2.1 : 2.2, this.hero ? 3.8 : 4.0);
-    this.controls.target.set(.7,.85,0); this.controls.update();
+    const points=this.engine.points,count=Math.min(this.engine.n,RENDER_LIMIT);
+    const bounds=new THREE.Box3();bounds.expandByPoint(new THREE.Vector3(0,0,0));
+    for(let i=0;i<=count;i++)bounds.expandByPoint(new THREE.Vector3(...points.slice(i*3,i*3+3)));
+    const center=bounds.getCenter(new THREE.Vector3()),size=bounds.getSize(new THREE.Vector3());
+    const radius=Math.max(.65,size.length());
+    this.camera.position.copy(center).add(new THREE.Vector3(radius*1.1,radius*.8,radius*1.5));
+    this.camera.far=Math.max(50,radius*10);this.camera.updateProjectionMatrix();
+    this.controls.maxDistance=Math.max(12,radius*6);this.controls.target.copy(center);this.controls.update();
   }
 
   resize() {
@@ -124,9 +125,29 @@ export class RobotScene {
   update(record = true) {
     const engine = this.engine;
     for (let i = 0; i < this.joints.length; i++) {
-      if (i === 0) this.joints[i].rotation.y = engine.q[i];
-      else this.joints[i].rotation.z = engine.q[i];
+      const origin=new THREE.Vector3(...engine.chain.origins[i]);
+      this.joints[i].position.copy(origin);
+      this.joints[i].quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),new THREE.Vector3(...engine.chain.axes[i]));
+      const joint=engine.definition.joints[i];
+      let ends;
+      if(joint.kind==='dh') {
+        const f=engine.chain.preFrames[i],corner=new THREE.Vector3(f[3]+f[2]*joint.d,f[7]+f[6]*joint.d,f[11]+f[10]*joint.d);
+        const end=new THREE.Vector3(engine.chain.frames[i][3],engine.chain.frames[i][7],engine.chain.frames[i][11]);
+        ends=[[origin,corner],[corner,end]];
+      } else {
+        const end=new THREE.Vector3(...(i+1<engine.n?engine.chain.origins[i+1]:engine.chain.tip));
+        ends=[[origin,end],[origin,origin]];
+      }
+      ends.forEach(([a,b],leg)=>{
+        const {body,stripe}=this.linkSegments[i][leg],direction=b.clone().sub(a),length=direction.length();
+        body.visible=stripe.visible=length>.001;
+        if(length<=.001)return;
+        body.position.copy(a).add(b).multiplyScalar(.5);body.scale.set(this.slim*1.6,length,this.slim*1.35);
+        body.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),direction.normalize());
+        stripe.position.copy(body.position);stripe.quaternion.copy(body.quaternion);stripe.scale.set(this.slim*1.64,length*.68,this.slim*.48);
+      });
     }
+    if(this.end){this.end.visible=engine.n<=RENDER_LIMIT;this.end.position.set(...engine.chain.tip);this.end.quaternion.setFromRotationMatrix(new THREE.Matrix4().set(...engine.chain.tipFrame));}
     if (record && this.trail?.visible && engine.n <= RENDER_LIMIT) {
       const k = engine.n * 3, tip = new THREE.Vector3(...engine.points.slice(k,k+3));
       if (tip.distanceToSquared(this.lastTip) > .000025) {

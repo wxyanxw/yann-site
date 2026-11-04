@@ -1,147 +1,126 @@
+import { createGeneric, validateDefinition } from './models.js';
+import { forwardChain, poseTransform, position, multiply } from './kinematics.js';
+export { validateDOF, MEMORY_BUDGET } from './models.js';
 export const DT = 1 / 120;
 export const RENDER_LIMIT = 128;
-export const MEMORY_BUDGET = 32 * 1024 * 1024;
-const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const clamp = (x,a,b) => Math.max(a,Math.min(b,x));
 
-export function validateDOF(n) {
-  if (!Number.isSafeInteger(n) || n < 1) throw new Error('轴数必须是大于或等于 1 的整数。');
-  // Includes engine, snapshots and Python/JS bridge allocations. Reject before allocation.
-  if (n * 512 > MEMORY_BUDGET) throw new Error(`该模型超出 32 MB 关节数据预算（本次最多 ${MEMORY_BUDGET / 512} 轴），请减小轴数。`);
-  return n;
-}
-
-export function initialPose(n) {
-  const q = new Float64Array(n);
-  q[0] = -0.35;
-  if (n > 1) q[1] = 1.25;
-  if (n > 2) q[2] = -1.45;
-  if (n > 3) q[3] = -0.6;
-  if (n > 4) q[4] = 0.25;
-  if (n > 5) q[5] = 0.35;
-  return q;
-}
-
-// Coordinate convention: world Y is up. First joint rotates about Y,
-// remaining joints about local Z. Links point along local +X.
 export class ArmPhysics {
-  constructor(n = 6) {
-    this.n = validateDOF(n);
-    this.q = initialPose(n);
-    this.dq = new Float64Array(n);
-    this.target = this.q.slice();
-    this.velocity = new Float64Array(n);
-    this.torque = new Float64Array(n);
-    this.inertia = new Float64Array(n);
-    this.lengths = new Float64Array(n);
-    this.points = new Float64Array((n + 1) * 3);
-    this.axes = new Float64Array(n * 3);
-    this.centers = new Float64Array(n * 3);
-    this.gravityTorque = new Float64Array(n);
-    this.mode = 'position';
-    this.gravity = true;
-    this.time = 0;
-    this.contacts = 0;
-    const scale = n > 7 ? 6 / n : 1;
-    for (let i = 0; i < n; i++) {
-      this.lengths[i] = (i === 0 ? .32 : i === 1 ? .82 : i === 2 ? .72 : .27) * scale;
-    }
-    let remaining = 0;
-    for (let i = n - 1; i >= 0; i--) {
-      remaining += this.lengths[i];
-      this.inertia[i] = Math.max(.03, .45 * remaining * remaining);
-    }
-    this.forward();
+  constructor(model = 6) {
+    this.definition=structuredClone(validateDefinition(typeof model==='number'?createGeneric(model):model));
+    this.n=this.definition.joints.length;
+    this.q=Float64Array.from(this.definition.joints,j=>j.q0);
+    this.dq=new Float64Array(this.n);
+    this.target=this.q.slice();this.velocity=new Float64Array(this.n);this.torque=new Float64Array(this.n);
+    this.inertia=new Float64Array(this.n);this.lengths=new Float64Array(this.n);
+    this.points=new Float64Array((this.n+1)*3);this.axes=new Float64Array(this.n*3);
+    this.centers=new Float64Array(this.n*3);this.gravityTorque=new Float64Array(this.n);
+    this.mode='position';this.gravity=true;this.time=0;this.contacts=0;
+    this.forward();this.estimateInertia();
   }
 
-  validate(values, mode) {
-    const arr = Array.from(values);
-    if (arr.length !== this.n) throw new Error(`需要 ${this.n} 个关节值，收到 ${arr.length} 个。`);
-    if (!arr.every(x => typeof x === 'number' && Number.isFinite(x))) throw new Error('所有关节值必须是有限数值。');
-    if (mode === 'position' && arr.some(x => Math.abs(x) > Math.PI)) throw new Error('关节角度须位于 [-π, π] rad 内。');
-    if (mode === 'velocity' && arr.some(x => Math.abs(x) > 6)) throw new Error('目标角速度须位于 [-6, 6] rad/s 内。');
-    if (mode === 'torque' && arr.some(x => Math.abs(x) > 100)) throw new Error('关节力矩须位于 [-100, 100] N·m 内。');
+  estimateInertia() {
+    // Diagonal approximation from source masses/COM and joint-axis projection.
+    // Backward mass moments avoid O(N²) storage or work.
+    let mass=0;const sum=[0,0,0],second=[0,0,0,0,0,0];
+    for(let i=this.n-1;i>=0;i--) {
+      const joint=this.definition.joints[i],m=joint.mass,k=i*3;
+      const c=Array.from(this.centers.slice(k,k+3)),o=Array.from(this.points.slice(k,k+3)),a=Array.from(this.axes.slice(k,k+3));
+      mass+=m;for(let d=0;d<3;d++)sum[d]+=m*c[d];
+      second[0]+=m*c[0]*c[0];second[1]+=m*c[1]*c[1];second[2]+=m*c[2]*c[2];
+      second[3]+=m*c[0]*c[1];second[4]+=m*c[0]*c[2];second[5]+=m*c[1]*c[2];
+      const trace=second[0]+second[1]+second[2]-2*o.reduce((v,x,d)=>v+x*sum[d],0)+mass*o.reduce((v,x)=>v+x*x,0);
+      const ao=a.reduce((v,x,d)=>v+x*o[d],0),as=a.reduce((v,x,d)=>v+x*sum[d],0);
+      const axial=a[0]*a[0]*second[0]+a[1]*a[1]*second[1]+a[2]*a[2]*second[2]+2*(a[0]*a[1]*second[3]+a[0]*a[2]*second[4]+a[1]*a[2]*second[5])-2*ao*as+mass*ao*ao;
+      let local=.004;
+      if(joint.inertia) {
+        const inv=poseTransform({rpy:(joint.inertialRPY||[0,0,0]),xyz:[0,0,0]});
+        // Rotate the source joint axis into the inertial frame (R transpose).
+        const axis=joint.axis,[x,y,z]=[inv[0]*axis[0]+inv[4]*axis[1]+inv[8]*axis[2],inv[1]*axis[0]+inv[5]*axis[1]+inv[9]*axis[2],inv[2]*axis[0]+inv[6]*axis[1]+inv[10]*axis[2]];
+        const I=joint.inertia;local=x*x*I.ixx+y*y*I.iyy+z*z*I.izz+2*(x*y*I.ixy+x*z*I.ixz+y*z*I.iyz);
+      }
+      this.inertia[i]=Math.max(.003,trace-axial+local);
+    }
+  }
+
+  validate(values,mode) {
+    const arr=Array.from(values);
+    if(arr.length!==this.n)throw new Error(`需要 ${this.n} 个关节值，收到 ${arr.length} 个。`);
+    if(!arr.every(x=>typeof x==='number'&&Number.isFinite(x)))throw new Error('所有关节值必须是有限数值。');
+    arr.forEach((x,i)=>{
+      const joint=this.definition.joints[i];
+      if(mode==='position'&&(x<joint.lower||x>joint.upper))throw new Error(`J${i+1} 关节角度须位于 [${joint.lower.toFixed(4)}, ${joint.upper.toFixed(4)}] rad 内。`);
+      if(mode==='velocity'&&Math.abs(x)>joint.maxVelocity)throw new Error(`J${i+1} 目标角速度须位于 [-${joint.maxVelocity}, ${joint.maxVelocity}] rad/s 内。`);
+      if(mode==='torque'&&Math.abs(x)>joint.maxTorque)throw new Error(`J${i+1} 关节力矩须位于 [-${joint.maxTorque}, ${joint.maxTorque}] N·m 内。`);
+    });
     return arr;
   }
 
-  set(values, mode) {
-    const arr = this.validate(values, mode);
-    if (!['position', 'velocity', 'torque'].includes(mode)) throw new Error('未知控制模式。');
-    this.mode = mode;
-    (mode === 'position' ? this.target : mode === 'velocity' ? this.velocity : this.torque).set(arr);
+  set(values,mode) {
+    if(!['position','velocity','torque'].includes(mode))throw new Error('未知控制模式。');
+    const arr=this.validate(values,mode);this.mode=mode;
+    (mode==='position'?this.target:mode==='velocity'?this.velocity:this.torque).set(arr);
   }
 
   forward() {
-    const p = this.points;
-    p[0] = 0; p[1] = .49; p[2] = 0;
-    // Rotation columns X, Y, Z. World yaw is applied only at the base.
-    let xx = Math.cos(this.q[0]), xy = 0, xz = -Math.sin(this.q[0]);
-    let yx = 0, yy = 1, yz = 0;
-    const zx = Math.sin(this.q[0]), zy = 0, zz = Math.cos(this.q[0]);
-    for (let i = 0; i < this.n; i++) {
-      const k = i * 3;
-      if (i === 0) { this.axes[k] = 0; this.axes[k + 1] = 1; this.axes[k + 2] = 0; }
-      else {
-        this.axes[k] = zx; this.axes[k + 1] = zy; this.axes[k + 2] = zz;
-        const c = Math.cos(this.q[i]), s = Math.sin(this.q[i]);
-        const nx = xx * c + yx * s, ny = xy * c + yy * s, nz = xz * c + yz * s;
-        yx = yx * c - xx * s; yy = yy * c - xy * s; yz = yz * c - xz * s;
-        xx = nx; xy = ny; xz = nz;
-      }
-      const length = this.lengths[i];
-      p[k + 3] = p[k] + xx * length;
-      p[k + 4] = p[k + 1] + xy * length;
-      p[k + 5] = p[k + 2] + xz * length;
-      this.centers[k] = (p[k] + p[k + 3]) * .5;
-      this.centers[k + 1] = (p[k + 1] + p[k + 4]) * .5;
-      this.centers[k + 2] = (p[k + 2] + p[k + 5]) * .5;
+    this.chain=forwardChain(this.definition,this.q);
+    for(let i=0;i<this.n;i++) {
+      const k=i*3;this.points.set(this.chain.origins[i],k);this.axes.set(this.chain.axes[i],k);this.centers.set(this.chain.centers[i],k);
+      const next=i+1<this.n?this.chain.origins[i+1]:this.chain.tip;
+      this.lengths[i]=Math.hypot(...next.map((x,d)=>x-this.chain.origins[i][d]));
     }
-    // Backward aggregate of gravity moments; O(N), no dense mass matrix.
-    let sx = 0, sz = 0, count = 0;
-    const mass = Math.min(.55, 3.3 / this.n);
-    for (let i = this.n - 1; i >= 0; i--) {
-      const k = i * 3;
-      sx += this.centers[k]; sz += this.centers[k + 2]; count++;
-      const rx = sx - count * p[k], rz = sz - count * p[k + 2];
-      this.gravityTorque[i] = this.gravity ? mass * 9.81 * (rz * this.axes[k] - rx * this.axes[k + 2]) : 0;
+    this.points.set(this.chain.tip,this.n*3);
+    let sumX=0,sumZ=0,mass=0;
+    for(let i=this.n-1;i>=0;i--) {
+      const k=i*3,m=this.definition.joints[i].mass;mass+=m;sumX+=m*this.centers[k];sumZ+=m*this.centers[k+2];
+      const rx=sumX-mass*this.points[k],rz=sumZ-mass*this.points[k+2];
+      this.gravityTorque[i]=this.gravity?9.81*(rz*this.axes[k]-rx*this.axes[k+2]):0;
     }
-    return p;
+    return this.points;
   }
 
-  step(dt = DT) {
-    if (!Number.isFinite(dt) || dt <= 0 || dt > .1) throw new Error('dt 必须位于 (0, 0.1] 秒内。');
-    const substeps = Math.ceil(dt / DT), h = dt / substeps;
-    for (let s = 0; s < substeps; s++) {
-      this.forward();
-      const before = this.q.slice();
-      for (let i = 0; i < this.n; i++) {
-        const inertia = this.inertia[i];
-        let command = this.torque[i];
-        if (this.mode === 'position') command = inertia * (95 * (this.target[i] - this.q[i]) - 19 * this.dq[i]) - this.gravityTorque[i];
-        if (this.mode === 'velocity') command = inertia * 18 * (this.velocity[i] - this.dq[i]) - this.gravityTorque[i];
-        const accel = (clamp(command, -100, 100) + this.gravityTorque[i] - .16 * this.dq[i]) / inertia;
-        this.dq[i] = clamp(this.dq[i] + accel * h, -6, 6);
-        this.q[i] += this.dq[i] * h;
-        if (Math.abs(this.q[i]) > Math.PI) { this.q[i] = clamp(this.q[i], -Math.PI, Math.PI); this.dq[i] = 0; }
+  getNativeTip() {
+    const frame=poseTransform(this.definition.base),p=this.chain.tip;
+    const delta=p.map((x,d)=>x-position(frame)[d]);
+    return [frame[0]*delta[0]+frame[4]*delta[1]+frame[8]*delta[2],frame[1]*delta[0]+frame[5]*delta[1]+frame[9]*delta[2],frame[2]*delta[0]+frame[6]*delta[1]+frame[10]*delta[2]];
+  }
+
+  getNativePose() {
+    const f=poseTransform(this.definition.base);
+    const inverse=[f[0],f[4],f[8],0,f[1],f[5],f[9],0,f[2],f[6],f[10],0,0,0,0,1];
+    for(let r=0;r<3;r++)inverse[r*4+3]=-(inverse[r*4]*f[3]+inverse[r*4+1]*f[7]+inverse[r*4+2]*f[11]);
+    const out=multiply(inverse,this.chain.tipFrame);
+    return Array.from({length:4},(_,r)=>out.slice(r*4,r*4+4));
+  }
+
+  step(dt=DT) {
+    if(!Number.isFinite(dt)||dt<=0||dt>.1)throw new Error('dt 必须位于 (0, 0.1] 秒内。');
+    const substeps=Math.ceil(dt/DT),h=dt/substeps;
+    for(let s=0;s<substeps;s++) {
+      this.forward();const before=this.q.slice();
+      for(let i=0;i<this.n;i++) {
+        const joint=this.definition.joints[i],inertia=this.inertia[i];let command=this.torque[i];
+        if(this.mode==='position')command=inertia*(95*(this.target[i]-this.q[i])-19*this.dq[i])-this.gravityTorque[i];
+        if(this.mode==='velocity')command=inertia*18*(this.velocity[i]-this.dq[i])-this.gravityTorque[i];
+        const accel=(clamp(command,-joint.maxTorque,joint.maxTorque)+this.gravityTorque[i]-.04*this.dq[i])/inertia;
+        this.dq[i]=clamp(this.dq[i]+accel*h,-joint.maxVelocity,joint.maxVelocity);this.q[i]+=this.dq[i]*h;
+        if(this.q[i]<joint.lower||this.q[i]>joint.upper){this.q[i]=clamp(this.q[i],joint.lower,joint.upper);this.dq[i]=0;}
       }
       this.forward();
-      // Conservative ground contact: roll back the penetrating substep.
-      let contact = false;
-      for (let i = 1; i <= this.n; i++) if (this.points[i * 3 + 1] < .045) { contact = true; break; }
-      if (contact) { this.q.set(before); this.dq.fill(0); this.contacts++; this.forward(); }
-      this.time += h;
+      let contact=false;
+      for(let i=0;i<=this.n;i++)if(this.points[i*3+1]<.025){contact=true;break;}
+      if(contact){this.q.set(before);this.dq.fill(0);this.contacts++;this.forward();}
+      this.time+=h;
     }
   }
 
   snapshot() {
-    return {q: Array.from(this.q), dq: Array.from(this.dq), target: Array.from(this.target), velocity: Array.from(this.velocity), torque: Array.from(this.torque), mode: this.mode, time: this.time, contacts: this.contacts};
+    return {q:Array.from(this.q),dq:Array.from(this.dq),target:Array.from(this.target),velocity:Array.from(this.velocity),torque:Array.from(this.torque),mode:this.mode,time:this.time,contacts:this.contacts};
   }
 
   restore(state) {
-    this.q.set(state.q); this.dq.set(state.dq);
-    if (state.target) this.target.set(state.target);
-    if (state.velocity) this.velocity.set(state.velocity);
-    if (state.torque) this.torque.set(state.torque);
-    this.mode = state.mode; this.time = state.time; this.contacts = state.contacts || 0;
-    this.forward();
+    this.q.set(state.q);this.dq.set(state.dq);
+    if(state.target)this.target.set(state.target);if(state.velocity)this.velocity.set(state.velocity);if(state.torque)this.torque.set(state.torque);
+    this.mode=state.mode;this.time=state.time;this.contacts=state.contacts||0;this.forward();
   }
 }

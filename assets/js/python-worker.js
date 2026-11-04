@@ -43,16 +43,19 @@ self.onmessage = async ({data}) => {
       pyodide = await loadPyodide({indexURL:new URL('../vendor/pyodide/',import.meta.url).href,
         stdout:text=>output('stdout',text),stderr:text=>output('stderr',text)});
     }
-    engine = new ArmPhysics(data.dof); engine.restore(data.state); engine.gravity=data.gravity; speed=data.speed; paused=false;
+    engine = new ArmPhysics(data.definition); engine.restore(data.state); engine.gravity=data.gravity; speed=data.speed; paused=false;
     self.armGet = kind => Array.from(kind === 'velocity' ? engine.dq : engine.q);
     self.armSet = (values,kind) => engine.set(asArray(values),kind);
     self.armValidate = values => engine.validate(asArray(values),'position');
     self.armStep = checkpoint;
     self.armTime = () => engine.time;
     self.armDOF = data.dof;
+    self.armLimits = () => engine.definition.joints.map(j=>[j.lower,j.upper]);
+    self.armGeometry = JSON.stringify(engine.definition);
+    self.armPose = () => engine.getNativePose();
     await pyodide.runPythonAsync(`
-import sys, types, math, asyncio
-from js import armGet, armSet, armStep, armTime, armDOF, armValidate
+import sys, types, math, asyncio, json
+from js import armGet, armSet, armStep, armTime, armDOF, armValidate, armLimits, armGeometry, armPose
 
 class Robot:
     def __init__(self, dof=None):
@@ -63,6 +66,12 @@ class Robot:
         return list(armGet('position').to_py())
     def get_joint_velocities(self):
         return list(armGet('velocity').to_py())
+    def get_joint_limits(self):
+        return armLimits().to_py()
+    def get_geometry(self):
+        return json.loads(str(armGeometry))
+    def get_end_effector_pose(self):
+        return armPose().to_py()
     def set_joint_positions(self, q):
         armSet(list(q), 'position')
     def set_joint_velocities(self, dq):

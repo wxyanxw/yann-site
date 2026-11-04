@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "python3 -m http.server 5173 --bind 0.0.0.0",
-    "test": "node tests/physics.test.js",
-    "test:browser": "node tests/browser.mjs"
+    "test": "node tests/physics.test.js && node tests/kinematics.test.js",
+    "test:browser": "node tests/browser.mjs",
+    "test:geometry": "node tests/geometry-browser.mjs"
   },
   "devDependencies": { "playwright-core": "1.58.2" }
 }

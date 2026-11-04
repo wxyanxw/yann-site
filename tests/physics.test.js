@@ -34,17 +34,17 @@ test('速度控制与力矩控制响应、角限位和输入单位检查', () =>
 });
 
 test('重力产生力矩响应，关闭重力后静止力矩模式保持静止', () => {
-  const on=new ArmPhysics(3),off=new ArmPhysics(3);off.gravity=false;
-  on.set([0,0,0],'torque');off.set([0,0,0],'torque');
+  const on=new ArmPhysics(6),off=new ArmPhysics(6);off.gravity=false;
+  on.set(new Array(6).fill(0),'torque');off.set(new Array(6).fill(0),'torque');
   for(let k=0;k<20;k++){on.step();off.step();}
   assert.ok(on.dq.some(v=>Math.abs(v)>.01));assert.ok(off.dq.every(v=>v===0));
 });
 
 test('地面接触阻止穿透，完整快照可恢复不同控制模式', () => {
-  const arm=new ArmPhysics(3);arm.set([0,-Math.PI/2,0],'position');
+  const arm=new ArmPhysics(6);const target=Array.from(arm.q);target[1]=Math.PI/2;arm.set(target,'position');
   for(let k=0;k<600;k++)arm.step();
-  for(let i=1;i<=arm.n;i++)assert.ok(arm.points[i*3+1]>=.045);
+  for(let i=1;i<=arm.n;i++)assert.ok(arm.points[i*3+1]>=.025);
   assert.ok(arm.contacts>0);
-  arm.set([.2,.3,.4],'velocity');const state=arm.snapshot();
-  const restored=new ArmPhysics(3);restored.restore(state);assert.deepEqual(restored.snapshot(),state);
+  arm.set(new Array(6).fill(.2),'velocity');const state=arm.snapshot();
+  const restored=new ArmPhysics(6);restored.restore(state);assert.deepEqual(restored.snapshot(),state);
 });

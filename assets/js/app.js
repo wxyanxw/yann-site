@@ -1,5 +1,7 @@
 import { ArmPhysics, DT, RENDER_LIMIT, validateDOF } from './physics.js';
 import { RobotScene } from './scene.js';
+import { createPreset, resizeDefinition, validateDefinition, modelFingerprint } from './models.js';
+import { GeometryEditor } from './geometry-editor.js';
 
 const $ = id => document.getElementById(id);
 const storage = {
@@ -7,16 +9,22 @@ const storage = {
   set(key,value) { try { localStorage.setItem(key,value); return true; } catch { return false; } },
 };
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-let engine = new ArmPhysics(6), heroEngine = new ArmPhysics(6);
+function savedModel() {
+  try { return validateDefinition(JSON.parse(storage.get('yann.lab.geometry.v1'))); }
+  catch { return createPreset('industrial6'); }
+}
+let engine = new ArmPhysics(savedModel()), heroEngine = new ArmPhysics(6);
+let geometryEditing=false, loadingModel=false, presetRequest=0;
+const geometryEditor = new GeometryEditor({onApply:applyDefinition,onCancel:()=>{geometryEditing=false;updateConfig();updateRunningUI();}});
 let heroScene, labScene, isLab = false, manualActive = false, paused = false, running = false;
 let worker = null, runtimeReady = false, heartbeat = 0, startedAt = 0, watchdog = null;
 let jointPage = 0, speed = 1, logCount = 0, toastTimer, saveTimer;
 let lastFrame = performance.now(), accumulator = 0, uiTick = 0, fpsFrames = 0, fpsTime = performance.now();
-const draftKey = n => `yann.lab.controller.${n}`;
+const draftKey = model => `yann.lab.controller.v2.${modelFingerprint(model)}`;
 const modes = {position:'位置控制',velocity:'速度控制',torque:'力矩控制'};
 
 export function demo(n) {
-  return `# ${n} 轴机械臂 · 平滑关节运动示例\n# 所有角度使用弧度；按 Ctrl / ⌘ + Enter 运行\nimport math\nfrom arm import Robot\n\nrobot = Robot(dof=${n})\n\nasync def main():\n    home = robot.get_joint_positions()\n    print(f"已连接 {robot.dof} 轴机械臂")\n\n    # 为每个关节设置目标，数组长度与轴数一致\n    target = home.copy()\n    target[0] = math.radians(45)\n    if robot.dof > 1:\n        target[1] = math.radians(65)\n\n    await robot.move_joints(target, duration=2.0)\n    print("目标已到达，准备返回初始姿态")\n    await robot.move_joints(home, duration=2.0)\n    print(f"运动完成 · 仿真时间 {robot.time:.2f} s")\n\nawait main()\n`;
+  return `# ${n} 轴机械臂 · 平滑关节运动示例\n# 所有角度使用弧度；按 Ctrl / ⌘ + Enter 运行\nimport math\nfrom arm import Robot\n\nrobot = Robot(dof=${n})\n\nasync def main():\n    home = robot.get_joint_positions()\n    print(f"已连接 {robot.dof} 轴机械臂")\n\n    # 为每个关节设置目标，数组长度与轴数一致\n    target = home.copy()\n    limits = robot.get_joint_limits()\n    target[0] = max(limits[0][0], min(limits[0][1], math.radians(45)))\n    if robot.dof > 1:\n        target[1] = max(limits[1][0], min(limits[1][1], home[1] + math.radians(10)))\n\n    await robot.move_joints(target, duration=2.0)\n    print("目标已到达，准备返回初始姿态")\n    await robot.move_joints(home, duration=2.0)\n    print(f"运动完成 · 仿真时间 {robot.time:.2f} s")\n\nawait main()\n`;
 }
 
 function toast(message) {
@@ -57,13 +65,13 @@ function buildJoints() {
   for(let i=start;i<end;i++) {
     const div=document.createElement('div');div.className='joint-control';
     const value=(engine.q[i]*180/Math.PI).toFixed(1);
-    div.innerHTML=`<label for="joint-${i}"><span><i></i>J${String(i+1).padStart(2,'0')}</span><output id="joint-value-${i}" for="joint-${i}">${value}°</output></label><input id="joint-${i}" type="range" min="-180" max="180" step="1" value="${Math.round(Number(value))}" aria-label="关节 ${i+1} 目标角度">`;
+    div.innerHTML=`<label for="joint-${i}"><span><i></i>J${String(i+1).padStart(2,'0')}</span><output id="joint-value-${i}" for="joint-${i}">${value}°</output></label><input id="joint-${i}" type="range" min="${engine.definition.joints[i].lower*180/Math.PI}" max="${engine.definition.joints[i].upper*180/Math.PI}" step="0.1" value="${value}" aria-label="关节 ${i+1} 目标角度">`;
     const input=div.querySelector('input');rangePaint(input);
     input.disabled=running;
     input.addEventListener('input',()=>{
       if(running)return;
       const targets=engine.mode==='position'?engine.target.slice():engine.q.slice();
-      targets[i]=Number(input.value)*Math.PI/180;engine.set(targets,'position');manualActive=true;
+      const joint=engine.definition.joints[i];targets[i]=Math.max(joint.lower,Math.min(joint.upper,Number(input.value)*Math.PI/180));engine.set(targets,'position');manualActive=true;
       $(`joint-value-${i}`).textContent=`${input.value}°`;rangePaint(input);
       setSimStatus(paused?'仿真已暂停':'关节运动中');
     });
@@ -81,23 +89,69 @@ function updateConfig() {
   $('api-dof').textContent=engine.n;$('api-length').textContent=engine.n;
   $('config-summary').textContent=`${engine.n} 个旋转关节已就绪`;
   $('axis-minus').disabled=engine.n===1;
+  $('model-preset').value=engine.definition.id==='custom'?'custom':engine.definition.id;
+  $('model-source').textContent=`${engine.definition.label} · ${engine.definition.source}`;
+  $('viewport-model-label').textContent=engine.definition.joints.some(j=>j.kind==='urdf')?'NERO / URDF SKELETON':'STANDARD DH';
+  $('axis-help').textContent=engine.n>RENDER_LIMIT?`已定义 ${engine.n} 轴；视图仅显示前 ${RENDER_LIMIT} 轴。增加轴后须填写 DH 参数。`:'增加轴后须填写新关节的 DH 参数。修改轴数保留已有关节几何。';
   buildJoints();updateTelemetry();
+}
+
+function applyDefinition(definition) {
+  validateDefinition(definition);
+  saveCode();
+  if(running)stopCode('构型变更，已停止当前程序');
+  const changed=modelFingerprint(definition)!==modelFingerprint(engine.definition);
+  if(changed&&geometryEditing&&definition.id===engine.definition.id) {
+    definition.id='custom';definition.label=definition.joints.some(j=>j.kind==='urdf')?'NERO 自定义构型':'自定义 DH 构型';
+  }
+  engine=new ArmPhysics(definition);engine.gravity=$('gravity-toggle').checked;
+  geometryEditing=false;loadingModel=false;jointPage=0;manualActive=false;accumulator=0;paused=false;updatePauseButton();
+  labScene?.buildRobot(engine);updateConfig();updateRunningUI();
+  storage.set('yann.lab.geometry.v1',JSON.stringify(engine.definition));
+  if(engine.definition.id==='custom')storage.set('yann.lab.custom-geometry.v1',JSON.stringify(engine.definition));
+  loadCode(storage.get(draftKey(engine.definition))??demo(engine.n));
+  setSimStatus('等待控制指令');
+  toast(engine.n>RENDER_LIMIT?`${engine.n} 轴构型已应用；视图显示前 ${RENDER_LIMIT} 个关节。`:`${engine.definition.label}已应用`);
+}
+
+function openGeometry(definition=engine.definition) {
+  if(running)stopCode('编辑构型，已停止当前程序');
+  geometryEditing=true;updateRunningUI();geometryEditor.open(definition);
 }
 
 function selectAxes(n) {
   try { validateDOF(n); } catch(error) { toast(error.message);$('axis-count').value=engine.n;return; }
   if(n===engine.n)return;
-  saveCode();if(running)stopCode('切换机械臂，已停止当前程序');
-  engine=new ArmPhysics(n);engine.gravity=$('gravity-toggle').checked;
-  jointPage=0;manualActive=false;accumulator=0;paused=false;updatePauseButton();
-  labScene?.buildRobot(engine);updateConfig();
-  loadCode(storage.get(draftKey(n))??demo(n));setSimStatus('等待控制指令');
-  if(n>RENDER_LIMIT)toast(`${n} 轴接口已创建；三维视图显示前 ${RENDER_LIMIT} 个关节。`);
+  const draft=resizeDefinition(engine.definition,n);
+  $('config-summary').textContent=`${n} 轴构型待应用`;
+  openGeometry(draft);
+}
+
+async function selectPreset(id) {
+  const request=++presetRequest;
+  if(id==='custom') {
+    let definition=engine.definition;
+    try{definition=validateDefinition(JSON.parse(storage.get('yann.lab.custom-geometry.v1')));}catch{}
+    openGeometry(definition);return;
+  }
+  loadingModel=true;updateRunningUI();
+  try {
+    let definition;
+    if(id==='nero7') {
+      $('model-source').textContent='正在加载 NERO 原始 URDF 构型…';
+      const response=await fetch(new URL('../models/nero/definition.json',import.meta.url));
+      if(!response.ok)throw new Error(`NERO 构型加载失败：HTTP ${response.status}`);
+      definition=validateDefinition(await response.json());
+    } else definition=createPreset(id);
+    if(request!==presetRequest)return;
+    applyDefinition(definition);
+  } catch(error) { if(request===presetRequest){toast(error.message);updateConfig();} }
+  finally {if(request===presetRequest){loadingModel=false;updateRunningUI();}}
 }
 
 function resetArm() {
   if(running)stopCode('机械臂已重置');
-  engine=new ArmPhysics(engine.n);engine.gravity=$('gravity-toggle').checked;
+  engine=new ArmPhysics(engine.definition);engine.gravity=$('gravity-toggle').checked;
   manualActive=false;paused=false;accumulator=0;updatePauseButton();
   labScene?.buildRobot(engine);buildJoints();updateTelemetry();setSimStatus('等待控制指令');
   toast('机械臂已回到初始姿态');
@@ -107,12 +161,12 @@ function setSimStatus(text) { $('sim-status').innerHTML='<span class="status-dot
 
 function updateTelemetry() {
   $('sim-time').innerHTML=`${engine.time.toFixed(2)} <small>s</small>`;
-  const tip=engine.points.slice(engine.n*3,engine.n*3+3);
+  const tip=engine.getNativeTip();
   $('tip-position').textContent=Array.from(tip,x=>x.toFixed(3)).join(' / ');
-  $('tip-position').title='X / Y / Z，单位：米';$('control-mode').textContent=modes[engine.mode];
+  $('tip-position').title='原生基座坐标 X / Y / Z，单位：米（与 Python 位姿一致）';$('control-mode').textContent=modes[engine.mode];
   for(let i=jointPage*6;i<Math.min(engine.n,(jointPage+1)*6);i++) {
     const input=$(`joint-${i}`),output=$(`joint-value-${i}`);
-    if(document.activeElement!==input) { input.value=Math.round(engine.q[i]*180/Math.PI);rangePaint(input);output.textContent=`${(engine.q[i]*180/Math.PI).toFixed(1)}°`; }
+    if(document.activeElement!==input) { input.value=engine.q[i]*180/Math.PI;rangePaint(input);output.textContent=`${(engine.q[i]*180/Math.PI).toFixed(1)}°`; }
   }
 }
 
@@ -140,7 +194,7 @@ function cursorPosition() {
   $('cursor-position').textContent=`Ln ${lines.length}, Col ${lines.at(-1).length+1}`;
 }
 function loadCode(value) { clearTimeout(saveTimer);$('code-input').value=value;refreshEditor();saveCode(); }
-function saveCode() { clearTimeout(saveTimer);const saved=storage.set(draftKey(engine.n),$('code-input').value);$('unsaved-dot').title=saved?'已自动保存到浏览器':'浏览器存储不可用，请下载代码';$('unsaved-dot').style.color=saved?'#6c8069':'#fa8b50'; }
+function saveCode() { clearTimeout(saveTimer);const saved=storage.set(draftKey(engine.definition),$('code-input').value);$('unsaved-dot').title=saved?'已自动保存到浏览器':'浏览器存储不可用，请下载代码';$('unsaved-dot').style.color=saved?'#6c8069':'#fa8b50'; }
 
 function log(text,type='stdout') {
   if(!logCount)$('console-output').replaceChildren();
@@ -154,7 +208,7 @@ function log(text,type='stdout') {
 }
 
 function updateRunningUI() {
-  $('run-code').disabled=running;$('run-code').querySelector('span').textContent=running?(runtimeReady?'运行中':'加载 Python…'):'运行代码';
+  $('run-code').disabled=running||geometryEditing||loadingModel;$('run-code').querySelector('span').textContent=running?(runtimeReady?'运行中':'加载 Python…'):'运行代码';
   $('stop-code').hidden=!running;
   document.querySelectorAll('#joint-controls input').forEach(x=>x.disabled=running);
 }
@@ -179,6 +233,7 @@ function stopCode(reason='已停止运行') {
 
 function runCode() {
   if(running)return;
+  if(geometryEditing||loadingModel){toast('请先应用完整的关节构型。');return;}
   if(!$('code-input').value.trim()){toast('先写一点 Python 代码吧。');return;}
   saveCode();running=true;manualActive=false;paused=false;updatePauseButton();
   engine.time=0;engine.contacts=0;labScene?.clearTrail();accumulator=0;
@@ -205,7 +260,7 @@ function runCode() {
     worker.onerror=event=>{log(event.message||'Python Worker 加载失败，请通过 HTTP 服务访问网站。','error');worker?.terminate();worker=null;runtimeReady=false;finishCode('启动失败');};
   }
   updateRunningUI();
-  worker.postMessage({type:'run',dof:engine.n,state:engine.snapshot(),gravity:$('gravity-toggle').checked,speed,code:$('code-input').value});
+  worker.postMessage({type:'run',dof:engine.n,definition:engine.definition,state:engine.snapshot(),gravity:$('gravity-toggle').checked,speed,code:$('code-input').value});
   watchdog=setInterval(()=>{
     if(paused)return;
     const now=performance.now();
@@ -223,7 +278,7 @@ function animate(now) {
   if(!isLab) {
     if(!reducedMotion) {
       heroEngine.target[0]=-.35+Math.sin(now*.00018)*.22;
-      heroEngine.target[1]=1.25+Math.sin(now*.00028)*.055;
+      heroEngine.target[1]=-1.05+Math.sin(now*.00028)*.055;
       heroEngine.step(Math.max(.001,delta));
     }
     heroScene?.update(false);
@@ -249,7 +304,9 @@ function animate(now) {
 window.addEventListener('hashchange',route);
 document.querySelectorAll('[data-placeholder]').forEach(x=>x.addEventListener('click',()=>toast(`${x.dataset.placeholder}正在准备中，先来机械臂实验室探索一下吧。`)));
 document.querySelectorAll('.current-year').forEach(x=>x.textContent=new Date().getFullYear());
-document.querySelectorAll('[data-axes]').forEach(x=>x.addEventListener('click',()=>selectAxes(Number(x.dataset.axes))));
+document.querySelectorAll('[data-axes]').forEach(x=>x.addEventListener('click',()=>selectPreset(({1:'single',3:'planar3',6:'industrial6',7:'nero7'})[x.dataset.axes])));
+$('model-preset').addEventListener('change',()=>selectPreset($('model-preset').value));
+$('edit-geometry').addEventListener('click',()=>openGeometry());
 $('axis-count').addEventListener('change',()=>selectAxes(Number($('axis-count').value)));
 $('axis-count').addEventListener('keydown',e=>{if(e.key==='Enter'){$('axis-count').blur();}});
 $('axis-minus').addEventListener('click',()=>selectAxes(engine.n-1));$('axis-plus').addEventListener('click',()=>selectAxes(engine.n+1));
@@ -289,4 +346,4 @@ $('download-code').addEventListener('click',()=>{const url=URL.createObjectURL(n
 $('clear-console').addEventListener('click',()=>{logCount=0;$('console-count').textContent='0';$('console-output').innerHTML='<div class="console-empty"><svg class="icon"><use href="#i-terminal"/></svg><p>输出已清空。</p><span>等待下一条控制指令</span></div>';});
 window.addEventListener('pagehide',()=>{saveCode();worker?.terminate();worker=null;runtimeReady=false;if(running)finishCode('离开页面，程序已停止');});
 
-loadCode(storage.get(draftKey(engine.n))??demo(engine.n));updateConfig();rangePaint($('sim-speed'));route();requestAnimationFrame(animate);
+loadCode(storage.get(draftKey(engine.definition))??demo(engine.n));updateConfig();rangePaint($('sim-speed'));route();requestAnimationFrame(animate);

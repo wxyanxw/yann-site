@@ -11,7 +11,7 @@ page.on('response',res=>{if(res.status()>=400)failedRequests.push(`${res.status(
 const artifacts=process.env.ARTIFACTS_DIR || '/tmp/yann-site-checks';
 await mkdir(artifacts,{recursive:true});
 const step=name=>console.log(`✓ ${name}`);
-const selectAxes=async n=>{await page.locator('#axis-count').fill(String(n));await page.locator('#axis-count').dispatchEvent('change');};
+const selectAxes=async n=>{await page.locator('#axis-count').fill(String(n));await page.locator('#axis-count').dispatchEvent('change');if(await page.locator('#geometry-dialog').isVisible()){await page.locator('#suggest-dh').click();await page.locator('#apply-geometry').click();}};
 const code=async text=>{await page.locator('#code-input').fill(text);};
 const run=async()=>{
   await page.locator('#run-code').click();

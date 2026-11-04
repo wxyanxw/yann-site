@@ -1,0 +1,415 @@
+{
+  "schemaVersion": 1,
+  "id": "nero7",
+  "label": "NERO · 七轴",
+  "source": "URDF",
+  "sourceFile": "NERO20251209URDF.urdf",
+  "sourceSHA256": "ca2f819da642e6b992330cfe35491eecefee2ec157e38a0842c88f21cf7affca",
+  "base": {
+    "xyz": [
+      0,
+      0.08,
+      0
+    ],
+    "rpy": [
+      -1.5707963267948966,
+      0,
+      0
+    ]
+  },
+  "baseNote": "URDF Z-up 转为视图 Y-up；展示底座抬高 0.08 m，Python 返回原生 URDF 坐标。",
+  "joints": [
+    {
+      "kind": "urdf",
+      "name": "joint1",
+      "parent": "base_link",
+      "child": "Link1",
+      "origin": {
+        "xyz": [
+          0.0,
+          0.0,
+          0.138
+        ],
+        "rpy": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "prefix": [
+        {
+          "xyz": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rpy": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "name": "world_to_base_link"
+        }
+      ],
+      "q0": 0,
+      "lower": -2.7,
+      "upper": 2.7,
+      "sourceVelocity": 0.0,
+      "sourceEffort": 0.0,
+      "maxVelocity": 2.0,
+      "maxTorque": 30.0,
+      "mass": 0.77,
+      "com": [
+        -0.00077,
+        -6e-05,
+        -0.00686
+      ],
+      "inertialRPY": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "inertia": {
+        "ixx": 0.0006669,
+        "ixy": -2.74e-06,
+        "ixz": -1.463e-05,
+        "iyy": 0.00054501,
+        "iyz": -1.83e-06,
+        "izz": 0.00051509
+      },
+      "configured": true
+    },
+    {
+      "kind": "urdf",
+      "name": "joint2",
+      "parent": "Link1",
+      "child": "Link2",
+      "origin": {
+        "xyz": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rpy": [
+          1.5708,
+          3.1415,
+          0.0
+        ]
+      },
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "prefix": [],
+      "q0": 0,
+      "lower": -1.74,
+      "upper": 1.74,
+      "sourceVelocity": 0.0,
+      "sourceEffort": 0.0,
+      "maxVelocity": 2.0,
+      "maxTorque": 30.0,
+      "mass": 0.49,
+      "com": [
+        -0.00011,
+        -0.06072,
+        0.00148
+      ],
+      "inertialRPY": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "inertia": {
+        "ixx": 0.00053808,
+        "ixy": -7.9e-07,
+        "ixz": -9e-08,
+        "iyy": 0.00029435,
+        "iyz": -4.088e-05,
+        "izz": 0.00040266
+      },
+      "configured": true
+    },
+    {
+      "kind": "urdf",
+      "name": "joint3",
+      "parent": "Link2",
+      "child": "Link3",
+      "origin": {
+        "xyz": [
+          0.0,
+          -0.31,
+          0.0
+        ],
+        "rpy": [
+          -1.5708,
+          0.0,
+          3.1416
+        ]
+      },
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "prefix": [],
+      "q0": 0,
+      "lower": -2.75,
+      "upper": 2.75,
+      "sourceVelocity": 0.0,
+      "sourceEffort": 0.0,
+      "maxVelocity": 2.0,
+      "maxTorque": 30.0,
+      "mass": 0.67,
+      "com": [
+        0.00014,
+        0.00211,
+        -0.04853
+      ],
+      "inertialRPY": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "inertia": {
+        "ixx": 0.00342528,
+        "ixy": -7.2e-07,
+        "ixz": -2.83e-06,
+        "iyy": 0.0033924,
+        "iyz": -7.226e-05,
+        "izz": 0.00026169
+      },
+      "configured": true
+    },
+    {
+      "kind": "urdf",
+      "name": "joint4",
+      "parent": "Link3",
+      "child": "Link4",
+      "origin": {
+        "xyz": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rpy": [
+          -1.5708,
+          0.0,
+          3.1416
+        ]
+      },
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "prefix": [],
+      "q0": 0,
+      "lower": -1.01,
+      "upper": 2.14,
+      "sourceVelocity": 0.0,
+      "sourceEffort": 0.0,
+      "maxVelocity": 2.0,
+      "maxTorque": 30.0,
+      "mass": 0.41,
+      "com": [
+        -0.00013,
+        -0.05482,
+        0.00132
+      ],
+      "inertialRPY": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "inertia": {
+        "ixx": 0.00031331,
+        "ixy": -9e-08,
+        "ixz": -7e-08,
+        "iyy": 0.00013204,
+        "iyz": -1.401e-05,
+        "izz": 0.0002393
+      },
+      "configured": true
+    },
+    {
+      "kind": "urdf",
+      "name": "joint5",
+      "parent": "Link4",
+      "child": "Link5",
+      "origin": {
+        "xyz": [
+          0.0,
+          -0.27001,
+          0.0
+        ],
+        "rpy": [
+          1.5708,
+          -1.5708,
+          0.0
+        ]
+      },
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "prefix": [],
+      "q0": 0,
+      "lower": -2.75,
+      "upper": 2.75,
+      "sourceVelocity": 0.0,
+      "sourceEffort": 0.0,
+      "maxVelocity": 2.0,
+      "maxTorque": 30.0,
+      "mass": 0.56,
+      "com": [
+        0.00303,
+        0.00617,
+        -0.11778
+      ],
+      "inertialRPY": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "inertia": {
+        "ixx": 0.0008249,
+        "ixy": -7.73e-06,
+        "ixz": -2.532e-05,
+        "iyy": 0.00078548,
+        "iyz": -4.377e-05,
+        "izz": 0.00021015
+      },
+      "configured": true
+    },
+    {
+      "kind": "urdf",
+      "name": "joint6",
+      "parent": "Link5",
+      "child": "Link6",
+      "origin": {
+        "xyz": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rpy": [
+          1.5708,
+          -1.5708,
+          0.0
+        ]
+      },
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "prefix": [],
+      "q0": 0,
+      "lower": -0.73,
+      "upper": 0.95,
+      "sourceVelocity": 0.0,
+      "sourceEffort": 0.0,
+      "maxVelocity": 2.0,
+      "maxTorque": 30.0,
+      "mass": 0.31,
+      "com": [
+        0.00014,
+        -0.0027,
+        -0.00025
+      ],
+      "inertialRPY": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "inertia": {
+        "ixx": 8.181e-05,
+        "ixy": -2.8e-07,
+        "ixz": -1.8e-07,
+        "iyy": 7.176e-05,
+        "iyz": -7e-08,
+        "izz": 7.906e-05
+      },
+      "configured": true
+    },
+    {
+      "kind": "urdf",
+      "name": "joint7",
+      "parent": "Link6",
+      "child": "Link7",
+      "origin": {
+        "xyz": [
+          0.0,
+          -0.0235,
+          0.0
+        ],
+        "rpy": [
+          1.5708,
+          0.0,
+          0.0
+        ]
+      },
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "prefix": [],
+      "q0": 0,
+      "lower": -1.57,
+      "upper": 1.57,
+      "sourceVelocity": 0.0,
+      "sourceEffort": 0.0,
+      "maxVelocity": 2.0,
+      "maxTorque": 30.0,
+      "mass": 0.0,
+      "com": [
+        -0.00014,
+        -0.0001,
+        -0.00275
+      ],
+      "inertialRPY": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "inertia": {
+        "ixx": 1.1e-07,
+        "ixy": 0.0,
+        "ixz": 0.0,
+        "iyy": 1.1e-07,
+        "iyz": 0.0,
+        "izz": 2e-07
+      },
+      "configured": true
+    }
+  ],
+  "tool": [
+    {
+      "xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rpy": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "end_effector_joint"
+    }
+  ],
+  "notes": [
+    "关节 origin、axis、角度限位、质量及惯性来自源 URDF；RPY 保留原始精度。",
+    "URDF 的七个 velocity/effort 均为 0，仿真替代值为 2 rad/s、30 N·m，不代表真实硬件。",
+    "Link7 的质量为 0；动力学保留此质量，采用最小数值惯量保证积分稳定。",
+    "未提供 package:// 引用的 STL；视图采用关节骨架，不表示真实外形。"
+  ]
+}
