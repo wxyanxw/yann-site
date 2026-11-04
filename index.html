@@ -1,548 +1,69 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#ff8fab">
-<title>谭笑，想你了，今天过得还好吗？ · 一封信</title>
-<style>
-  :root{
-    --pink:#ff8fab; --rose:#ff5d8f; --gold:#ffd6a5;
-    --ink:#5b3a4a; --paper:#fff7fb;
-    --bg1:#ffe3ec; --bg2:#ffd6e0; --bg3:#e7f0ff; --blob:#ffb3c6;
-  }
-  /* 夜晚主题 */
-  body.night{
-    --pink:#ff9ec4; --rose:#ff6fa3; --gold:#ffe1a8;
-    --ink:#f3e6ef; --paper:#2a2140;
-    --bg1:#1a1530; --bg2:#2d1b4e; --bg3:#1f2b4d; --blob:#6c4bd1;
-  }
-  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-  html,body{ height:100%; margin:0; }
-  body{
-    font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
-    color:var(--ink);
-    background:linear-gradient(160deg,var(--bg1),var(--bg2) 55%,var(--bg3));
-    overflow:hidden; position:relative;
-    user-select:none; -webkit-user-select:none;
-    touch-action:manipulation;
-    transition:background .8s ease;
-  }
-  /* 漂浮光斑背景 */
-  .blob{ position:absolute; border-radius:50%; filter:blur(40px); opacity:.55;
-    animation:drift 18s ease-in-out infinite; }
-  .blob.b1{ width:46vmax; height:46vmax; background:var(--blob);
-    top:-12vmax; left:-10vmax; animation-delay:0s; }
-  .blob.b2{ width:38vmax; height:38vmax; background:var(--gold);
-    bottom:-14vmax; right:-8vmax; animation-delay:-6s; }
-  .blob.b3{ width:30vmax; height:30vmax; background:var(--rose);
-    top:40%; left:55%; animation-delay:-11s; opacity:.35; }
-  @keyframes drift{
-    0%,100%{ transform:translate(0,0) scale(1); }
-    33%{ transform:translate(6vmax,-4vmax) scale(1.1); }
-    66%{ transform:translate(-5vmax,5vmax) scale(.95); }
-  }
-  /* 星星（夜晚） */
-  .star{ position:absolute; width:3px; height:3px; border-radius:50%;
-    background:#fff; opacity:0; animation:tw 3s ease-in-out infinite; }
-  body.night .star{ opacity:.8; }
-  @keyframes tw{ 0%,100%{opacity:.2; transform:scale(.6);} 50%{opacity:.9; transform:scale(1.2);} }
-
-  /* 开场信封 */
-  #intro{ position:fixed; inset:0; z-index:50; display:flex; flex-direction:column;
-    align-items:center; justify-content:center; gap:26px; padding:30px;
-    background:linear-gradient(160deg,var(--bg1),var(--bg2),var(--bg3));
-    transition:opacity .9s ease, transform .9s ease; }
-  #intro.hide{ opacity:0; transform:scale(1.08); pointer-events:none; }
-  .envelope{ width:150px; height:108px; position:relative; cursor:pointer;
-    animation:bob 2.4s ease-in-out infinite; }
-  .env-body{ position:absolute; inset:0; background:var(--paper);
-    border-radius:14px; box-shadow:0 14px 30px rgba(0,0,0,.18); }
-  .env-flap{ position:absolute; top:0; left:0; right:0; height:60px;
-    background:var(--rose); clip-path:polygon(0 0,100% 0,50% 100%);
-    transition:transform .6s ease; transform-origin:top; z-index:2; }
-  .envelope.open .env-flap{ transform:rotateX(180deg); }
-  .env-heart{ position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-    font-size:40px; z-index:1; animation:beat 1.4s ease-in-out infinite; }
-  @keyframes bob{ 0%,100%{transform:translateY(0);} 50%{transform:translateY(-10px);} }
-  @keyframes beat{ 0%,100%{transform:translate(-50%,-50%) scale(1);}
-    50%{transform:translate(-50%,-50%) scale(1.18);} }
-  .intro-title{ font-size:22px; font-weight:700; letter-spacing:2px; text-align:center; }
-  .intro-sub{ font-size:14px; opacity:.8; text-align:center; max-width:300px; line-height:1.7; }
-
-  /* 主界面 */
-  #main{ position:relative; z-index:10; height:100%; display:flex; flex-direction:column;
-    align-items:center; justify-content:space-between; padding:max(28px,env(safe-area-inset-top)) 22px max(28px,env(safe-area-inset-bottom));
-    opacity:0; transition:opacity 1s ease .3s; }
-  #main.show{ opacity:1; }
-  .top{ text-align:center; min-height:54px; }
-  .greet{ font-size:15px; opacity:.85; }
-  .date{ font-size:12px; opacity:.6; margin-top:4px; letter-spacing:1px; }
-
-  .center{ flex:1; min-height:0; display:flex; flex-direction:column; align-items:center;
-    justify-content:center; gap:14px; }
-  .heart-btn{ font-size:96px; line-height:1; cursor:pointer; filter:drop-shadow(0 10px 18px rgba(255,93,143,.45));
-    animation:beatBig 1.6s ease-in-out infinite; transition:transform .12s ease; }
-  .heart-btn.pop{ transform:scale(1.35); }
-  @keyframes beatBig{ 0%,100%{transform:scale(1);} 14%{transform:scale(1.12);}
-    28%{transform:scale(1);} 42%{transform:scale(1.08);} 56%{transform:scale(1);} }
-  .big-text{ font-size:30px; font-weight:800; letter-spacing:3px; min-height:38px;
-    text-align:center; text-shadow:0 2px 10px rgba(255,93,143,.35); }
-  .big-text .caret{ display:inline-block; width:3px; margin-left:2px;
-    background:var(--rose); animation:blink .8s step-end infinite; }
-  @keyframes blink{ 50%{opacity:0;} }
-  .name-tag{ font-size:13px; opacity:.7; letter-spacing:1px; }
-  .counter{ font-size:13px; opacity:.85; text-align:center; }
-  .counter b{ font-size:20px; color:var(--rose); }
-  .counter .sub{ display:block; font-size:11.5px; opacity:.72; margin-top:3px;
-    letter-spacing:.5px; }
-  .progress{ width:200px; height:10px; border-radius:99px; background:rgba(0,0,0,.1);
-    overflow:hidden; box-shadow:inset 0 1px 3px rgba(0,0,0,.15); }
-  body.night .progress{ background:rgba(255,255,255,.12); }
-  .progress > i{ display:block; height:100%; width:0%;
-    background:linear-gradient(90deg,var(--gold),var(--rose)); transition:width .4s ease; }
-
-  .quote{ font-size:16px; line-height:1.7; text-align:center; max-width:320px;
-    min-height:48px; max-height:40vh; overflow-y:auto; opacity:.92; font-style:italic;
-    scrollbar-width:none; -webkit-overflow-scrolling:touch; }
-  .quote::-webkit-scrollbar{ display:none; }
-  .toolbar{ display:flex; gap:12px; flex-wrap:wrap; justify-content:center; }
-  .btn{ border:none; border-radius:99px; padding:11px 18px; font-size:14px; font-weight:600;
-    color:#fff; background:linear-gradient(135deg,var(--rose),var(--pink));
-    box-shadow:0 6px 16px rgba(255,93,143,.35); cursor:pointer; transition:transform .1s ease; }
-  .btn:active{ transform:scale(.94); }
-  .btn.ghost{ background:rgba(255,255,255,.25); color:var(--ink);
-    box-shadow:0 4px 12px rgba(0,0,0,.08); }
-  .hint{ font-size:11px; opacity:.55; text-align:center; line-height:1.8; }
-
-  /* 飘浮粒子 */
-  .particle{ position:absolute; z-index:20; pointer-events:none; font-size:22px;
-    animation:floatUp 1.6s ease-out forwards; }
-  @keyframes floatUp{
-    0%{ transform:translateY(0) scale(.6); opacity:1; }
-    100%{ transform:translateY(-160px) scale(1.2) rotate(20deg); opacity:0; }
-  }
-  .plus{ position:absolute; z-index:21; pointer-events:none; font-size:16px;
-    font-weight:700; color:var(--rose); animation:plusUp 1s ease-out forwards; }
-  @keyframes plusUp{ 0%{transform:translateY(0);opacity:1;} 100%{transform:translateY(-60px);opacity:0;} }
-
-  /* 彩蛋层 */
-  #egg{ position:fixed; inset:0; z-index:40; pointer-events:none; display:none;
-    align-items:center; justify-content:center; }
-  #egg.show{ display:flex; }
-  .egg-card{ background:var(--paper); color:var(--ink); padding:30px 26px; border-radius:20px;
-    max-width:300px; text-align:center; box-shadow:0 20px 50px rgba(0,0,0,.3);
-    animation:pop .5s cubic-bezier(.2,1.4,.5,1); }
-  .egg-card .big{ font-size:54px; }
-  .egg-card h3{ margin:10px 0 6px; }
-  .egg-card p{ font-size:14px; line-height:1.7; opacity:.85; }
-  @keyframes pop{ 0%{transform:scale(.5);opacity:0;} 100%{transform:scale(1);opacity:1;} }
-
-  .rain{ position:absolute; top:-40px; font-size:26px; animation:fall linear forwards; }
-  @keyframes fall{ to{ transform:translateY(110vh) rotate(360deg); opacity:.9; } }
-
-  .toast{ position:fixed; left:50%; bottom:90px; transform:translateX(-50%) translateY(20px);
-    background:rgba(0,0,0,.78); color:#fff; padding:10px 18px; border-radius:99px; font-size:14px;
-    z-index:60; opacity:0; transition:.3s ease; pointer-events:none; white-space:nowrap; max-width:90%; }
-  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
-
-  /* 照片查看层（相册） */
-  #photoViewer{ position:fixed; inset:0; z-index:55; display:none; flex-direction:column;
-    align-items:center; justify-content:center; gap:16px; padding:24px;
-    background:rgba(18,8,16,.88); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); }
-  #photoViewer.show{ display:flex; }
-  #photoViewer img{ max-width:92vw; max-height:64vh; border-radius:16px;
-    box-shadow:0 20px 50px rgba(0,0,0,.55); animation:pop .4s cubic-bezier(.2,1.4,.5,1); }
-  /* 左右箭头 */
-  .pv-nav{ position:absolute; top:50%; transform:translateY(-50%); width:48px; height:48px;
-    border:none; border-radius:50%; background:rgba(255,255,255,.18); color:#fff;
-    font-size:30px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center;
-    box-shadow:0 4px 12px rgba(0,0,0,.3); transition:transform .1s ease, background .2s ease; }
-  .pv-nav:active{ transform:translateY(-50%) scale(.9); background:rgba(255,255,255,.34); }
-  .pv-prev{ left:14px; }
-  .pv-next{ right:14px; }
-  /* 底部控制条（位置接近主界面按钮） */
-  .pv-bar{ position:absolute; left:0; right:0; bottom:max(24px,env(safe-area-inset-bottom));
-    display:flex; align-items:center; justify-content:center; gap:16px; }
-  .pv-count{ font-size:12px; opacity:.8; color:#fff; letter-spacing:1px; }
-  .pv-exit{ border:none; border-radius:99px; padding:11px 20px; font-size:14px; font-weight:600;
-    color:#fff; background:linear-gradient(135deg,var(--rose),var(--pink));
-    box-shadow:0 6px 16px rgba(255,93,143,.35); cursor:pointer; transition:transform .1s ease; }
-  .pv-exit:active{ transform:scale(.94); }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#101114">
+  <meta name="description" content="YANN 的个人空间。记录、探索，以及一个可以用 Python 编程的机械臂仿真实验室。">
+  <title>YANN — 让想法动起来</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/css/site.css">
 </head>
 <body>
-  <div class="blob b1"></div>
-  <div class="blob b2"></div>
-  <div class="blob b3"></div>
-  <div id="stars"></div>
-
-  <!-- 开场：卓言写给谭笑的信 -->
-  <div id="intro">
-    <div class="envelope" id="envelope">
-      <div class="env-body"></div>
-      <div class="env-heart">💌</div>
-      <div class="env-flap"></div>
-    </div>
-    <div class="intro-title">写给谭笑的信</div>
-    <div class="intro-sub">点开信封吧，有我想对你说的话</div>
-  </div>
-
-  <!-- 主界面 -->
-  <div id="main">
-    <div class="top">
-      <div class="greet" id="greet">……</div>
-      <div class="date" id="date"></div>
-    </div>
-
-    <div class="center">
-      <div class="heart-btn" id="heart">💖</div>
-      <div class="big-text" id="bigText"><span class="caret"></span></div>
-      <div class="name-tag" id="nameTag">—— 这封信是写给你的</div>
-      <div class="counter">又多想了你 <b id="count">0</b> 次
-        <span class="sub">每戳一下，我就想你一次</span>
-      </div>
-      <div class="progress"><i id="bar"></i></div>
-    </div>
-
-    <div style="width:100%; display:flex; flex-direction:column; align-items:center; gap:16px;">
-      <div class="quote" id="quote">……</div>
-      <div class="toolbar">
-        <button class="btn" id="callBtn">点下试试 🔊</button>
-        <button class="btn ghost" id="whisperBtn">悄悄说一句 💬</button>
-        <button class="btn ghost" id="photoBtn">我们的回忆 📷</button>
-        <button class="btn ghost" id="shareBtn">复制一下 📋</button>
-        <button class="btn ghost" id="shakeBtn">摇一摇 📳</button>
-      </div>
-      <div class="hint">试试戳戳爱心，长按爱心 · 把手机摇一摇 · 点下试试</div>
-    </div>
-  </div>
-
-  <div id="egg"><div class="egg-card" id="eggCard"></div></div>
-  <div id="photoViewer">
-    <button class="pv-nav pv-prev" id="pvPrev" aria-label="上一张">‹</button>
-    <img id="pvImg" src="" alt="照片">
-    <button class="pv-nav pv-next" id="pvNext" aria-label="下一张">›</button>
-    <div class="pv-bar">
-      <span class="pv-count" id="pvCount"></span>
-      <button class="pv-exit" id="pvClose">退出 ✕</button>
-    </div>
-  </div>
-  <div class="toast" id="toast"></div>
-
-<script src="photo/manifest.js"></script>
-<script>
-(function(){
-  "use strict";
-  var $ = function(id){ return document.getElementById(id); };
-  var NAME = "谭笑";
-  var ME = "卓言";
-
-  /* ---------- 时间主题 ---------- */
-  var hour = new Date().getHours();
-  var isNight = (hour >= 19 || hour < 6);
-  if(isNight) document.body.classList.add("night");
-
-  var greetText = isNight ? NAME+"，夜深了，你睡了吗 🌙"
-                : (hour < 11 ? NAME+"，早安，今天也要开开心心 ☀️"
-                : hour < 18 ? NAME+"，下午好，今天过得还好吗 ☁️"
-                : NAME+"，天快黑了，今天过得还好吗 🌇");
-  $("greet").textContent = greetText;
-
-  var d = new Date();
-  var week = ["周日","周一","周二","周三","周四","周五","周六"][d.getDay()];
-  $("date").textContent = d.getFullYear()+"年"+(d.getMonth()+1)+"月"+d.getDate()+"日 · "+week;
-
-  /* 夜晚加星星 */
-  if(isNight){
-    var stars = $("stars");
-    for(var i=0;i<40;i++){
-      var s = document.createElement("div");
-      s.className = "star";
-      s.style.left = Math.random()*100+"%";
-      s.style.top = Math.random()*100+"%";
-      s.style.animationDelay = (Math.random()*3)+"s";
-      stars.appendChild(s);
-    }
-  }
-
-  /* ---------- 想对谭笑说的话 ---------- */
-  var quotes = [
-    "你好呀谭笑，我是"+ME+"，今天过得还好吗？",
-    "今天工作顺不顺利，是不是还是很烦？",
-    "你在做什么呢？有没有想起我？",
-    "今天吃了什么好吃的？",
-    "要不要一起打王者？我技术又上升了",
-    "还有多少天发工资？想想就开心了",
-    "你妈妈的螺蛳粉店开得怎么样啦？是不是快成宜宾首富了",
-    "我们一起去吃酸鸭锅吧，吃完再去看电影",
-    "祝你天天开心，能找到适合你的生活方式，养养花，玩玩游戏，理理财，然后尽快赚到100w，财富自由哈哈哈",
-    "我会一直喜欢你，记得你，记得我们之间的回忆，记得东莞，记得悠兰里，记得绿荷居，幸福花园，记得重庆，深圳，记得那些我们一起躲过的交警。哈哈哈好肉麻。",
-    "好了，暂时想不到其他肉麻的句子了，有空回来网站看看，我经常会更新"
-  ];
-  function pickQuote(){
-    return quotes[Math.floor(Math.random()*quotes.length)];
-  }
-  // 按顺序逐句，不重复（轮完一遍再从头开始）
-  var whisperIdx = 0;
-  function nextQuote(){
-    var q = quotes[whisperIdx % quotes.length];
-    whisperIdx++;
-    return q;
-  }
-  // 长的句子自动缩小字号，避免撑出屏幕
-  function setQuote(text){
-    var el = $("quote");
-    el.textContent = text;
-    el.style.fontSize = text.length > 70 ? "13.5px"
-                      : (text.length > 42 ? "15px" : "16px");
-  }
-
-  /* ---------- 计数持久化 ---------- */
-  var KEY = "missTanxiaoCount_v1";
-  var count = parseInt(localStorage.getItem(KEY) || "0", 10) || 0;
-  $("count").textContent = count;
-
-  function bump(){
-    count++;
-    localStorage.setItem(KEY, count);
-    $("count").textContent = count;
-    var cycle = count % 100;
-    $("bar").style.width = (cycle === 0 ? 100 : cycle) + "%";
-    // 每满 100 次先弹大彩蛋，其余按 8 的倍数弹
-    if(cycle === 0 && count > 0){ celebrate(); }
-    else if(count % 16 === 0){ comboEgg(); }
-  }
-
-  /* ---------- 打字机 ---------- */
-  var fullText = NAME+"，你好吗";
-  var ti = 0, tt;
-  function typeWriter(){
-    $("bigText").innerHTML = "";
-    ti = 0;
-    clearInterval(tt);
-    tt = setInterval(function(){
-      if(ti < fullText.length){
-        $("bigText").innerHTML = fullText.slice(0,ti+1) + '<span class="caret"></span>';
-        ti++;
-      } else {
-        clearInterval(tt);
-        setTimeout(function(){ $("bigText").innerHTML = fullText; }, 700);
-      }
-    }, 240);
-  }
-
-  /* ---------- 振动 ---------- */
-  function buzz(ms){ try{ if(navigator.vibrate) navigator.vibrate(ms); }catch(e){} }
-
-  /* ---------- 语音喊谭笑（系统 TTS，无需联网） ---------- */
-  function say(text){
-    try{
-      if(window.speechSynthesis){
-        window.speechSynthesis.cancel();
-        var u = new SpeechSynthesisUtterance(text);
-        u.lang = "zh-CN"; u.rate = 0.92; u.pitch = 1.15; u.volume = 1;
-        window.speechSynthesis.speak(u);
-      } else { toast(text); }
-    }catch(e){ toast(text); }
-  }
-
-  /* ---------- 飘浮粒子 ---------- */
-  function spawnParticle(x, y, ch){
-    var p = document.createElement("div");
-    p.className = "particle";
-    p.textContent = ch || (Math.random()<0.5 ? "💕" : "💗");
-    p.style.left = x + "px";
-    p.style.top = y + "px";
-    document.body.appendChild(p);
-    setTimeout(function(){ p.remove(); }, 1600);
-  }
-  function spawnPlus(x, y){
-    var p = document.createElement("div");
-    p.className = "plus"; p.textContent = "+1 💞";
-    p.style.left = x + "px"; p.style.top = y + "px";
-    document.body.appendChild(p);
-    setTimeout(function(){ p.remove(); }, 1000);
-  }
-
-  /* ---------- Toast ---------- */
-  var toastTimer;
-  function toast(msg){
-    var t = $("toast"); t.textContent = msg; t.classList.add("show");
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(function(){ t.classList.remove("show"); }, 1800);
-  }
-
-  /* ---------- 彩蛋 ---------- */
-  function showEgg(html){
-    $("eggCard").innerHTML = html;
-    $("egg").classList.add("show");
-    setTimeout(function(){ $("egg").classList.remove("show"); }, 2800);
-  }
-  function celebrate(){
-    showEgg('<div class="big">🎉💖🎉</div><h3>戳了 '+count+' 次了</h3>'+
-            '<p>会不会很累呀，<br>奖励你今天可以随便使唤我。</p>');
-    buzz([60,40,60,40,120]);
-    heartRain();
-  }
-  function comboEgg(){
-    showEgg('<div class="big">💗</div><h3>又戳了 16 次咯</h3>'+
-            '<p>我在心里又多想了你 16 次，<br>今天怕是工作都不专心了</p>');
-  }
-  function heartRain(){
-    for(var i=0;i<60;i++){
-      (function(idx){
-        setTimeout(function(){
-          var r = document.createElement("div");
-          r.className = "rain";
-          r.textContent = ["💖","💗","💕","🌸","✨"][Math.floor(Math.random()*5)];
-          r.style.left = Math.random()*100+"%";
-          r.style.fontSize = (18+Math.random()*22)+"px";
-          r.style.animationDuration = (2.5+Math.random()*2)+"s";
-          document.body.appendChild(r);
-          setTimeout(function(){ r.remove(); }, 5000);
-        }, idx*40);
-      })(i);
-    }
-  }
-
-  /* ---------- 开场 ---------- */
-  var opened = false;
-  $("envelope").addEventListener("click", function(){
-    if(opened) return; opened = true;
-    this.classList.add("open");
-    buzz(40);
-    var self = this;
-    setTimeout(function(){
-      $("intro").classList.add("hide");
-      setTimeout(function(){
-        $("main").classList.add("show");
-        typeWriter();
-        setQuote(pickQuote());
-      }, 700);
-    }, 500);
-  });
-
-  /* ---------- 主爱心 ---------- */
-  var heart = $("heart");
-  heart.addEventListener("pointerdown", function(e){
-    e.stopPropagation();
-
-    heart.classList.add("pop");
-    setTimeout(function(){ heart.classList.remove("pop"); }, 130);
-    bump();
-    buzz(30);
-    spawnPlus(e.clientX-14, e.clientY-30);
-  });
-  // 长按彩蛋
-  var pressTimer;
-  heart.addEventListener("pointerdown", function(){
-    pressTimer = setTimeout(function(){
-      showEgg('<div class="big">💓</div><h3>被你发现了</h3>'+
-              '<p>居然按这么久，我的心跳得好厉害。</p>');
-      buzz([50,30,50]);
-    }, 700);
-  });
-  ["pointerup","pointerleave","pointercancel"].forEach(function(ev){
-    heart.addEventListener(ev, function(){ clearTimeout(pressTimer); });
-  });
-
-  /* ---------- 点空白处飘爱心 ---------- */
-  document.body.addEventListener("pointerdown", function(e){
-    if(opened && $("main").classList.contains("show")){
-      if(e.target === heart || heart.contains(e.target)) return;
-      spawnParticle(e.clientX-12, e.clientY-12);
-    }
-  });
-
-  /* ---------- 按钮 ---------- */
-  $("callBtn").addEventListener("click", function(){
-    say(NAME+"，你还好吗？");
-    toast("在念给你听啦 🔊 " + NAME + "，你还好吗？");
-  });
-  $("whisperBtn").addEventListener("click", function(){
-    setQuote(nextQuote());
-    buzz(20);
-  });
-
-  /* ---------- 我们的回忆（相册：左右箭头切换） ---------- */
-  var photoList = (window.PHOTO_LIST || []).slice();
-  var photoIndex = 0;
-  function showPhotoAt(i){
-    if(!photoList.length){
-      toast("还没有照片哦，先放几张到 photo 文件夹 📷");
-      return;
-    }
-    photoIndex = (i % photoList.length + photoList.length) % photoList.length;
-    var name = photoList[photoIndex];
-    $("pvImg").src = "photo/" + encodeURIComponent(name);
-    $("pvCount").textContent = "第 " + (photoIndex+1) + " / " + photoList.length + " 张";
-    $("photoViewer").classList.add("show");
-    buzz(20);
-  }
-  function closePhoto(){ $("photoViewer").classList.remove("show"); }
-  $("photoBtn").addEventListener("click", function(){
-    if($("photoViewer").classList.contains("show")){
-      showPhotoAt(photoIndex + 1);            // 已打开则换下一张
-    } else {
-      showPhotoAt(Math.floor(Math.random()*photoList.length)); // 随机起始一张
-    }
-  });
-  $("pvPrev").addEventListener("click", function(){ showPhotoAt(photoIndex - 1); });
-  $("pvNext").addEventListener("click", function(){ showPhotoAt(photoIndex + 1); });
-  $("pvClose").addEventListener("click", closePhoto);
-  $("photoViewer").addEventListener("click", function(e){
-    if(e.target === this) closePhoto(); // 点背景关闭
-  });
-
-  $("shareBtn").addEventListener("click", function(){
-    var text = NAME+"，想你了，今天过得还好吗？💌\n（这封信里，又多想了你 "+count+" 次）\n—— "+ME;
-    if(navigator.clipboard && navigator.clipboard.writeText){
-      navigator.clipboard.writeText(text).then(function(){ toast("已复制"); })
-        .catch(function(){ toast(text); });
-    } else { toast(text); }
-  });
-
-  /* ---------- 摇一摇 ---------- */
-  var shakeBtn = $("shakeBtn");
-  var listening = false;
-  function onMotion(e){
-    var a = e.accelerationIncludingGravity || e.acceleration;
-    if(!a) return;
-    var mag = Math.abs(a.x||0)+Math.abs(a.y||0)+Math.abs(a.z||0);
-    if(mag > 32){
-      clearTimeout(onMotion._t);
-      onMotion._t = setTimeout(function(){
-        bump(); spawnParticle(window.innerWidth/2-12, window.innerHeight/2-12, "💞");
-        toast("摇一下，又多想了你一次 💗");
-        buzz([40,30,40]);
-      }, 300);
-    }
-  }
-  shakeBtn.addEventListener("click", function(){
-    if(listening){ toast("已经在听啦，摇手机试试～"); return; }
-    var DME = window.DeviceMotionEvent;
-    if(DME && typeof DME.requestPermission === "function"){
-      DME.requestPermission().then(function(state){
-        if(state === "granted"){ startShake(); }
-        else toast("摇一摇没打开成功，戳戳爱心也一样 💕");
-      }).catch(function(){ toast("没拿到晃动权限 💕"); });
-    } else if(window.DeviceMotionEvent){
-      startShake();
-    } else {
-      toast("这台手机摇不了，戳戳爱心也一样 💗");
-    }
-  });
-  function startShake(){
-    listening = true;
-    window.addEventListener("devicemotion", onMotion);
-    toast("摇一摇已开启 📳 用力摇手机！");
-  }
-
-  /* 防误触：双击缩放关闭 */
-  document.addEventListener("gesturestart", function(e){ e.preventDefault(); });
-})();
-</script>
+  <svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6"/></symbol>
+    <symbol id="i-up-right" viewBox="0 0 24 24"><path d="M6 18 18 6M6 6h12v12"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></symbol>
+    <symbol id="i-photo" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="1.5"/><path d="m3 17 5-5 4 4 4-7 5 8"/></symbol>
+    <symbol id="i-blog" viewBox="0 0 24 24"><path d="M5 3h11l3 3v15H5zM9 8h5M9 12h6M9 16h4"/></symbol>
+    <symbol id="i-arm" viewBox="0 0 24 24"><path d="M4 21h13M6 21v-4l4-2-3-6 5-5 6 5-4 4 3 4M17 17l4-2v-3"/><circle cx="12" cy="5" r="2"/><circle cx="9" cy="15" r="2"/></symbol>
+    <symbol id="i-code" viewBox="0 0 24 24"><path d="m8 7-5 5 5 5m8-10 5 5-5 5m-3-14-2 18"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="m8 5 11 7-11 7z"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+    <symbol id="i-reset" viewBox="0 0 24 24"><path d="M3 10a9 9 0 1 1 2 8M3 4v6h6"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><path d="M3 3h18v18H3zM3 9h18M3 15h18M9 3v18M15 3v18"/></symbol>
+    <symbol id="i-expand" viewBox="0 0 24 24"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m8 0h5v-5"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V3H3v13h5"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 17v4h16v-4"/></symbol>
+    <symbol id="i-terminal" viewBox="0 0 24 24"><path d="m5 6 6 6-6 6m9 0h6"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7v1"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+    <symbol id="i-github" viewBox="0 0 24 24"><path d="M9 19c-4 1-4-2-6-2m15 5v-4a4 4 0 0 0-1-3c4 0 6-2 6-6a5 5 0 0 0-2-4 5 5 0 0 0 0-4s-2-1-5 2a14 14 0 0 0-8 0C5 0 3 1 3 1a5 5 0 0 0 0 4 5 5 0 0 0-2 4c0 4 2 6 6 6a4 4 0 0 0-1 3v4"/></symbol>
+  </defs></svg>
+  <header class="site-header">
+    <a href="#home" class="brand" aria-label="YANN 首页"><span class="brand-mark"><i></i><i></i><i></i></span>YANN<span class="brand-dot">.</span></a>
+    <nav class="main-nav" aria-label="主导航"><a href="#home" data-nav="home" class="active">首页</a><button data-placeholder="个人简介">个人简介</button><button data-placeholder="照片">照片</button><button data-placeholder="博客">博客</button><a href="#lab" data-nav="lab">机械臂实验室<span class="nav-new">LAB</span></a></nav>
+    <a href="https://github.com/wxyanxw" target="_blank" rel="noopener noreferrer" class="github-link"><svg class="icon"><use href="#i-github"/></svg><span>GitHub</span><svg class="icon small"><use href="#i-up-right"/></svg></a>
+  </header>
+  <main id="home-page" class="home-page">
+    <section class="hero">
+      <div class="hero-copy"><div class="eyebrow"><span class="status-dot"></span>HELLO, WORLD. <span class="eyebrow-rule"></span> 欢迎来到我的个人空间</div><h1>保持好奇，<br>让想法<span class="accent">动起来<span class="period">.</span></span></h1><p class="hero-description">在代码与现实之间，探索更多可能。<br>这里是我的数字工作台，也是一些有趣想法的起点。</p><div class="hero-actions"><a href="#lab" class="button primary">进入机械臂实验室<svg class="icon"><use href="#i-arrow"/></svg></a><span class="hero-note">从一行代码，到一次运动。</span></div><div class="hero-tags"><span><i></i>Robotics</span><span>Python</span><span>Creative Coding</span></div></div>
+      <div class="hero-visual" id="hero-visual"><div class="visual-topline"><span><span class="status-dot"></span>LIVE SIMULATION</span><span class="mono">01 — ROBOTICS</span></div><div id="hero-scene" class="hero-scene" role="img" aria-label="橙色与白色的六轴机械臂三维模型"></div><span class="visual-bracket tl"></span><span class="visual-bracket br"></span><div class="model-label"><span class="model-label-line"></span><div><b>6-AXIS MANIPULATOR</b><span>想象、编程，然后让它运动。</span></div></div><div class="visual-bottomline"><span class="mono">X <b id="hero-x">0.000</b> &nbsp; Y <b id="hero-y">0.000</b> &nbsp; Z <b id="hero-z">0.000</b></span><span class="visual-hint">拖动旋转 · 滚轮缩放</span></div></div>
+    </section>
+    <section class="explore-section" aria-labelledby="explore-title"><div class="section-heading"><div><span class="section-kicker">EXPLORE MY SPACE</span><h2 id="explore-title">一点关于我，一些新的探索。</h2></div><span class="section-index mono">01 / 04 AVAILABLE</span></div><div class="destination-grid">
+      <button class="destination-card" data-placeholder="个人简介"><div class="card-top"><svg class="icon"><use href="#i-user"/></svg><span class="card-number mono">01</span></div><div class="card-body"><h3>个人简介 <span>ABOUT</span></h3><p>经历、热爱与正在做的事。</p></div><div class="card-bottom"><span class="coming-soon">正在准备</span><svg class="icon"><use href="#i-up-right"/></svg></div></button>
+      <button class="destination-card" data-placeholder="照片"><div class="card-top"><svg class="icon"><use href="#i-photo"/></svg><span class="card-number mono">02</span></div><div class="card-body"><h3>照片 <span>GALLERY</span></h3><p>用镜头收藏生活里的片刻。</p></div><div class="card-bottom"><span class="coming-soon">正在准备</span><svg class="icon"><use href="#i-up-right"/></svg></div></button>
+      <button class="destination-card" data-placeholder="博客"><div class="card-top"><svg class="icon"><use href="#i-blog"/></svg><span class="card-number mono">03</span></div><div class="card-body"><h3>博客 <span>JOURNAL</span></h3><p>记录思考，也分享探索过程。</p></div><div class="card-bottom"><span class="coming-soon">正在准备</span><svg class="icon"><use href="#i-up-right"/></svg></div></button>
+      <a href="#lab" class="destination-card featured"><div class="card-top"><svg class="icon"><use href="#i-arm"/></svg><span class="card-number mono">04</span></div><div class="card-body"><h3>机械臂实验室 <span>ROBOTICS</span></h3><p>搭建机械臂，让你的算法动起来。</p></div><div class="card-bottom"><span class="available"><span class="status-dot"></span>开放探索</span><span class="card-arrow"><svg class="icon"><use href="#i-arrow"/></svg></span></div></a>
+    </div></section><footer class="site-footer"><span>© <span class="current-year">2026</span> YANN. Built with curiosity.</span><span class="footer-note"><span class="status-dot"></span> 始终保持探索</span><span class="mono">DESIGN × CODE × ROBOTICS</span></footer>
+  </main>
+  <main id="lab-page" class="lab-page" hidden>
+    <div class="lab-heading"><div><div class="breadcrumb"><a href="#home">个人空间</a><svg class="icon"><use href="#i-chevron"/></svg><span>机械臂实验室</span></div><h1>机械臂实验室<span class="lab-version mono">PLAYGROUND / 01</span></h1><p>选择你的机械臂，用 Python 将控制算法变为运动。</p></div><div class="lab-heading-actions"><button id="model-info" class="button subtle"><svg class="icon"><use href="#i-info"/></svg>仿真说明</button><span class="engine-badge"><span class="status-dot"></span>本地浏览器仿真</span></div></div>
+    <div class="lab-workspace">
+      <aside class="configuration panel"><div class="panel-title"><span><svg class="icon"><use href="#i-arm"/></svg>机械臂配置</span><span class="mono panel-index">01</span></div><div class="config-content"><section class="config-axis">
+        <div class="field-title"><label for="axis-count">关节轴数</label><span class="mono">DOF</span></div><div class="axis-stepper"><button id="axis-minus" aria-label="减少一个轴">−</button><input id="axis-count" type="number" min="1" step="1" value="6" inputmode="numeric" aria-describedby="axis-help"><button id="axis-plus" aria-label="增加一个轴">+</button></div><div class="axis-presets" aria-label="常用轴数"><button data-axes="1">1 轴</button><button data-axes="3">3 轴</button><button data-axes="6" class="selected">6 轴</button><button data-axes="7">7 轴</button></div><p class="field-help" id="axis-help">1 → N，自由定义你的关节数。<br>实际规模受浏览器性能限制。</p></section><section class="config-joints"><div class="config-divider"></div>
+        <div class="field-title"><span>关节控制</span><span class="unit-label">DEG</span></div><div id="joint-controls" class="joint-controls"></div><div class="joint-pagination" id="joint-pagination" hidden><button id="joint-prev" aria-label="上一页关节">←</button><span id="joint-page-label" class="mono"></span><button id="joint-next" aria-label="下一页关节">→</button></div></section><section class="config-world"><div class="config-divider"></div>
+        <div class="field-title"><span>仿真环境</span><span class="mono">WORLD</span></div><div class="setting-row"><label for="gravity-toggle">重力 <span class="mono">9.81 m/s²</span></label><input id="gravity-toggle" type="checkbox" class="switch" checked></div><div class="setting-row"><label for="trail-toggle">末端轨迹</label><input id="trail-toggle" type="checkbox" class="switch" checked></div><label class="speed-label" for="sim-speed"><span>运行速度</span><span id="speed-label" class="mono">1.0×</span></label><input id="sim-speed" type="range" min="0.25" max="2" step="0.25" value="1"><button id="reset-arm" class="button reset-button"><svg class="icon"><use href="#i-reset"/></svg>重置机械臂</button></section></div><div class="config-bottom"><span class="status-dot"></span><span id="config-summary">6 个旋转关节已就绪</span></div></aside>
+      <section class="simulator panel" aria-labelledby="sim-title"><div class="panel-title"><span id="sim-title"><span class="status-dot"></span>实时仿真<span class="panel-tag mono" id="dof-badge">6 DOF</span></span><div class="viewport-tools"><button id="toggle-grid" class="icon-button active" title="显示或隐藏网格" aria-label="显示或隐藏网格" aria-pressed="true"><svg class="icon"><use href="#i-grid"/></svg></button><button id="reset-camera" class="icon-button" title="重置视角" aria-label="重置视角"><svg class="icon"><use href="#i-reset"/></svg></button><button id="fullscreen" class="icon-button" title="全屏仿真" aria-label="全屏仿真"><svg class="icon"><use href="#i-expand"/></svg></button></div></div><div class="viewport" id="lab-scene"><div class="viewport-overlay"><span class="viewport-label mono">PERSPECTIVE</span><span id="render-fps" class="mono">60 FPS</span></div><div class="axis-compass" aria-hidden="true"><span class="x">X</span><span class="y">Y</span><span class="z">Z</span><i></i></div><div class="viewport-instructions">左键旋转 <i>·</i> 滚轮缩放 <i>·</i> 右键平移</div><div class="viewport-status" id="sim-status"><span class="status-dot"></span>等待控制指令</div></div><div class="telemetry"><div><span>仿真时间</span><b class="mono" id="sim-time">0.00 <small>s</small></b></div><div><span>末端位置 <small>m</small></span><b class="mono" id="tip-position">—</b></div><div><span>控制模式</span><b id="control-mode">位置控制</b></div><button id="pause-sim" class="icon-button" title="暂停仿真" aria-label="暂停仿真"><svg class="icon"><use href="#i-pause"/></svg></button></div></section>
+      <section class="interface-panel panel" aria-labelledby="interface-title"><div class="panel-title"><span id="interface-title"><svg class="icon"><use href="#i-code"/></svg>关节控制接口</span><span class="panel-tag mono">PYTHON API</span></div><div class="interface-content"><div class="api-intro"><span class="api-model mono" id="api-model">Robot(dof=6)</span><p>通过统一接口控制每一个关节。<br>当前机械臂拥有 <b id="api-dof">6</b> 个自由度。</p></div><div class="api-methods">
+        <div class="api-method"><code><span>get_joint_positions</span>()</code><p>读取全部关节角度 <span>→ list[float]</span></p></div><div class="api-method"><code><span>set_joint_positions</span>(q)</code><p>设置目标角度 <span>rad · 位置驱动</span></p></div><div class="api-method"><code><span>set_joint_velocities</span>(dq)</code><p>设置目标角速度 <span>rad/s</span></p></div><div class="api-method"><code><span>set_joint_torques</span>(τ)</code><p>设置关节力矩 <span>N·m</span></p></div><div class="api-method"><code>await <span>move_joints</span>(q, duration)</code><p>平滑插值运动 <span>duration · 秒</span></p></div><div class="api-method"><code>await <span>step</span>(dt)</code><p>推进动力学仿真 <span>默认 1/120 s</span></p></div>
+      </div><div class="api-notice"><svg class="icon"><use href="#i-info"/></svg><p>关节编号从 <code>0</code> 开始，输入数组长度须为 <b id="api-length">6</b>。角度单位为弧度，界面以度显示。</p></div></div><button id="load-demo" class="button demo-button">加载控制 Demo<svg class="icon"><use href="#i-arrow"/></svg></button></section>
+      <section class="editor-panel panel" aria-labelledby="editor-title"><div class="panel-title editor-title"><div class="editor-tabs"><span id="editor-title"><svg class="icon"><use href="#i-code"/></svg>控制算法</span><span class="file-tab"><span class="python-mark">Py</span>controller.py<span id="unsaved-dot" title="已保存到浏览器">•</span></span></div><div class="editor-actions"><button id="download-code" class="icon-button" title="下载 Python 代码" aria-label="下载 Python 代码"><svg class="icon"><use href="#i-download"/></svg></button><button id="copy-code" class="icon-button" title="复制代码" aria-label="复制代码"><svg class="icon"><use href="#i-copy"/></svg></button><span class="editor-language mono">Python 3.12</span><button id="stop-code" class="button stop-button" hidden>停止</button><button id="run-code" class="button run-button"><svg class="icon"><use href="#i-play"/></svg><span>运行代码</span><kbd>⌘ ↵</kbd></button></div></div><div class="code-editor"><div id="line-numbers" class="line-numbers mono" aria-hidden="true"></div><div class="editor-input-wrap"><pre id="code-highlight" aria-hidden="true"><code id="highlighted-code"></code></pre><textarea id="code-input" aria-label="Python 控制算法编辑器" spellcheck="false" autocapitalize="off" autocomplete="off" wrap="off"></textarea></div></div><div class="editor-footer"><span><span class="status-dot"></span><span id="python-status">Python 运行时 · 按需加载</span></span><span class="mono" id="cursor-position">Ln 1, Col 1</span><span class="mono">UTF-8 &nbsp; · &nbsp; 4 SPACES</span></div></section>
+      <section class="console-panel panel" aria-labelledby="console-title"><div class="panel-title"><span id="console-title"><svg class="icon"><use href="#i-terminal"/></svg>运行输出<span id="console-count" class="output-count mono">0</span></span><button id="clear-console" class="text-button">清空</button></div><div id="console-output" class="console-output" role="log" aria-live="polite"><div class="console-empty"><svg class="icon"><use href="#i-terminal"/></svg><p>让你的第一行代码动起来。</p><span>点击「运行代码」查看输出</span></div></div><div class="console-footer"><span class="status-dot"></span><span id="execution-status">等待运行</span><span class="mono">STDOUT / STDERR</span></div></section>
+    </div><footer class="lab-footer"><span>YANN LAB <span>·</span> 一个让想法动起来的地方。</span><span class="mono">SIMULATE. ITERATE. CREATE.</span></footer>
+  </main>
+  <dialog id="info-dialog"><div class="dialog-head"><span class="eyebrow">ABOUT THIS SIMULATION</span><button id="close-info" class="icon-button" aria-label="关闭说明">×</button></div><h2>一张轻量的机器人工作台。</h2><p>用 Python 编写算法，在浏览器里观察关节、轨迹和力矩响应。</p><div class="info-block"><h3>物理模型</h3><p>串联旋转关节，首轴绕 Y 轴，后续轴绕局部 Z 轴。采用 120 Hz 固定步长、半隐式积分、对角关节惯量、重力、阻尼与 PD 驱动，并检测机械臂与地面的接触。</p><p>这是教学用简化动力学：不包含完整惯性耦合、自碰撞或真实硬件标定，不适合直接用于真实机械臂的安全验证。</p></div><div class="info-block"><h3>任意轴数与运行方式</h3><p>轴数输入支持任意正整数。较大模型按性能预算分配内存，3D 视图最多显示 128 个关节，所有已分配关节都参与控制。超出内存预算会明确提示，不会静默截断接口。</p><p>Python 在独立 Web Worker 中通过 Pyodide 本地运行。代码自动存储在当前浏览器；停止按钮可终止计算。首次加载需要下载本站的 Python 运行资源。</p></div><button id="info-ok" class="button primary">开始探索<svg class="icon"><use href="#i-arrow"/></svg></button></dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="assets/js/app.js"></script>
 </body>
 </html>
- 

@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#ff8fab">
+<title>谭笑，想你了，今天过得还好吗？ · 一封信</title>
+<style>
+  :root{
+    --pink:#ff8fab; --rose:#ff5d8f; --gold:#ffd6a5;
+    --ink:#5b3a4a; --paper:#fff7fb;
+    --bg1:#ffe3ec; --bg2:#ffd6e0; --bg3:#e7f0ff; --blob:#ffb3c6;
+  }
+  /* 夜晚主题 */
+  body.night{
+    --pink:#ff9ec4; --rose:#ff6fa3; --gold:#ffe1a8;
+    --ink:#f3e6ef; --paper:#2a2140;
+    --bg1:#1a1530; --bg2:#2d1b4e; --bg3:#1f2b4d; --blob:#6c4bd1;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ height:100%; margin:0; }
+  body{
+    font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    color:var(--ink);
+    background:linear-gradient(160deg,var(--bg1),var(--bg2) 55%,var(--bg3));
+    overflow:hidden; position:relative;
+    user-select:none; -webkit-user-select:none;
+    touch-action:manipulation;
+    transition:background .8s ease;
+  }
+  /* 漂浮光斑背景 */
+  .blob{ position:absolute; border-radius:50%; filter:blur(40px); opacity:.55;
+    animation:drift 18s ease-in-out infinite; }
+  .blob.b1{ width:46vmax; height:46vmax; background:var(--blob);
+    top:-12vmax; left:-10vmax; animation-delay:0s; }
+  .blob.b2{ width:38vmax; height:38vmax; background:var(--gold);
+    bottom:-14vmax; right:-8vmax; animation-delay:-6s; }
+  .blob.b3{ width:30vmax; height:30vmax; background:var(--rose);
+    top:40%; left:55%; animation-delay:-11s; opacity:.35; }
+  @keyframes drift{
+    0%,100%{ transform:translate(0,0) scale(1); }
+    33%{ transform:translate(6vmax,-4vmax) scale(1.1); }
+    66%{ transform:translate(-5vmax,5vmax) scale(.95); }
+  }
+  /* 星星（夜晚） */
+  .star{ position:absolute; width:3px; height:3px; border-radius:50%;
+    background:#fff; opacity:0; animation:tw 3s ease-in-out infinite; }
+  body.night .star{ opacity:.8; }
+  @keyframes tw{ 0%,100%{opacity:.2; transform:scale(.6);} 50%{opacity:.9; transform:scale(1.2);} }
+
+  /* 开场信封 */
+  #intro{ position:fixed; inset:0; z-index:50; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:26px; padding:30px;
+    background:linear-gradient(160deg,var(--bg1),var(--bg2),var(--bg3));
+    transition:opacity .9s ease, transform .9s ease; }
+  #intro.hide{ opacity:0; transform:scale(1.08); pointer-events:none; }
+  .envelope{ width:150px; height:108px; position:relative; cursor:pointer;
+    animation:bob 2.4s ease-in-out infinite; }
+  .env-body{ position:absolute; inset:0; background:var(--paper);
+    border-radius:14px; box-shadow:0 14px 30px rgba(0,0,0,.18); }
+  .env-flap{ position:absolute; top:0; left:0; right:0; height:60px;
+    background:var(--rose); clip-path:polygon(0 0,100% 0,50% 100%);
+    transition:transform .6s ease; transform-origin:top; z-index:2; }
+  .envelope.open .env-flap{ transform:rotateX(180deg); }
+  .env-heart{ position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    font-size:40px; z-index:1; animation:beat 1.4s ease-in-out infinite; }
+  @keyframes bob{ 0%,100%{transform:translateY(0);} 50%{transform:translateY(-10px);} }
+  @keyframes beat{ 0%,100%{transform:translate(-50%,-50%) scale(1);}
+    50%{transform:translate(-50%,-50%) scale(1.18);} }
+  .intro-title{ font-size:22px; font-weight:700; letter-spacing:2px; text-align:center; }
+  .intro-sub{ font-size:14px; opacity:.8; text-align:center; max-width:300px; line-height:1.7; }
+
+  /* 主界面 */
+  #main{ position:relative; z-index:10; height:100%; display:flex; flex-direction:column;
+    align-items:center; justify-content:space-between; padding:max(28px,env(safe-area-inset-top)) 22px max(28px,env(safe-area-inset-bottom));
+    opacity:0; transition:opacity 1s ease .3s; }
+  #main.show{ opacity:1; }
+  .top{ text-align:center; min-height:54px; }
+  .greet{ font-size:15px; opacity:.85; }
+  .date{ font-size:12px; opacity:.6; margin-top:4px; letter-spacing:1px; }
+
+  .center{ flex:1; min-height:0; display:flex; flex-direction:column; align-items:center;
+    justify-content:center; gap:14px; }
+  .heart-btn{ font-size:96px; line-height:1; cursor:pointer; filter:drop-shadow(0 10px 18px rgba(255,93,143,.45));
+    animation:beatBig 1.6s ease-in-out infinite; transition:transform .12s ease; }
+  .heart-btn.pop{ transform:scale(1.35); }
+  @keyframes beatBig{ 0%,100%{transform:scale(1);} 14%{transform:scale(1.12);}
+    28%{transform:scale(1);} 42%{transform:scale(1.08);} 56%{transform:scale(1);} }
+  .big-text{ font-size:30px; font-weight:800; letter-spacing:3px; min-height:38px;
+    text-align:center; text-shadow:0 2px 10px rgba(255,93,143,.35); }
+  .big-text .caret{ display:inline-block; width:3px; margin-left:2px;
+    background:var(--rose); animation:blink .8s step-end infinite; }
+  @keyframes blink{ 50%{opacity:0;} }
+  .name-tag{ font-size:13px; opacity:.7; letter-spacing:1px; }
+  .counter{ font-size:13px; opacity:.85; text-align:center; }
+  .counter b{ font-size:20px; color:var(--rose); }
+  .counter .sub{ display:block; font-size:11.5px; opacity:.72; margin-top:3px;
+    letter-spacing:.5px; }
+  .progress{ width:200px; height:10px; border-radius:99px; background:rgba(0,0,0,.1);
+    overflow:hidden; box-shadow:inset 0 1px 3px rgba(0,0,0,.15); }
+  body.night .progress{ background:rgba(255,255,255,.12); }
+  .progress > i{ display:block; height:100%; width:0%;
+    background:linear-gradient(90deg,var(--gold),var(--rose)); transition:width .4s ease; }
+
+  .quote{ font-size:16px; line-height:1.7; text-align:center; max-width:320px;
+    min-height:48px; max-height:40vh; overflow-y:auto; opacity:.92; font-style:italic;
+    scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+  .quote::-webkit-scrollbar{ display:none; }
+  .toolbar{ display:flex; gap:12px; flex-wrap:wrap; justify-content:center; }
+  .btn{ border:none; border-radius:99px; padding:11px 18px; font-size:14px; font-weight:600;
+    color:#fff; background:linear-gradient(135deg,var(--rose),var(--pink));
+    box-shadow:0 6px 16px rgba(255,93,143,.35); cursor:pointer; transition:transform .1s ease; }
+  .btn:active{ transform:scale(.94); }
+  .btn.ghost{ background:rgba(255,255,255,.25); color:var(--ink);
+    box-shadow:0 4px 12px rgba(0,0,0,.08); }
+  .hint{ font-size:11px; opacity:.55; text-align:center; line-height:1.8; }
+
+  /* 飘浮粒子 */
+  .particle{ position:absolute; z-index:20; pointer-events:none; font-size:22px;
+    animation:floatUp 1.6s ease-out forwards; }
+  @keyframes floatUp{
+    0%{ transform:translateY(0) scale(.6); opacity:1; }
+    100%{ transform:translateY(-160px) scale(1.2) rotate(20deg); opacity:0; }
+  }
+  .plus{ position:absolute; z-index:21; pointer-events:none; font-size:16px;
+    font-weight:700; color:var(--rose); animation:plusUp 1s ease-out forwards; }
+  @keyframes plusUp{ 0%{transform:translateY(0);opacity:1;} 100%{transform:translateY(-60px);opacity:0;} }
+
+  /* 彩蛋层 */
+  #egg{ position:fixed; inset:0; z-index:40; pointer-events:none; display:none;
+    align-items:center; justify-content:center; }
+  #egg.show{ display:flex; }
+  .egg-card{ background:var(--paper); color:var(--ink); padding:30px 26px; border-radius:20px;
+    max-width:300px; text-align:center; box-shadow:0 20px 50px rgba(0,0,0,.3);
+    animation:pop .5s cubic-bezier(.2,1.4,.5,1); }
+  .egg-card .big{ font-size:54px; }
+  .egg-card h3{ margin:10px 0 6px; }
+  .egg-card p{ font-size:14px; line-height:1.7; opacity:.85; }
+  @keyframes pop{ 0%{transform:scale(.5);opacity:0;} 100%{transform:scale(1);opacity:1;} }
+
+  .rain{ position:absolute; top:-40px; font-size:26px; animation:fall linear forwards; }
+  @keyframes fall{ to{ transform:translateY(110vh) rotate(360deg); opacity:.9; } }
+
+  .toast{ position:fixed; left:50%; bottom:90px; transform:translateX(-50%) translateY(20px);
+    background:rgba(0,0,0,.78); color:#fff; padding:10px 18px; border-radius:99px; font-size:14px;
+    z-index:60; opacity:0; transition:.3s ease; pointer-events:none; white-space:nowrap; max-width:90%; }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  /* 照片查看层（相册） */
+  #photoViewer{ position:fixed; inset:0; z-index:55; display:none; flex-direction:column;
+    align-items:center; justify-content:center; gap:16px; padding:24px;
+    background:rgba(18,8,16,.88); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); }
+  #photoViewer.show{ display:flex; }
+  #photoViewer img{ max-width:92vw; max-height:64vh; border-radius:16px;
+    box-shadow:0 20px 50px rgba(0,0,0,.55); animation:pop .4s cubic-bezier(.2,1.4,.5,1); }
+  /* 左右箭头 */
+  .pv-nav{ position:absolute; top:50%; transform:translateY(-50%); width:48px; height:48px;
+    border:none; border-radius:50%; background:rgba(255,255,255,.18); color:#fff;
+    font-size:30px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center;
+    box-shadow:0 4px 12px rgba(0,0,0,.3); transition:transform .1s ease, background .2s ease; }
+  .pv-nav:active{ transform:translateY(-50%) scale(.9); background:rgba(255,255,255,.34); }
+  .pv-prev{ left:14px; }
+  .pv-next{ right:14px; }
+  /* 底部控制条（位置接近主界面按钮） */
+  .pv-bar{ position:absolute; left:0; right:0; bottom:max(24px,env(safe-area-inset-bottom));
+    display:flex; align-items:center; justify-content:center; gap:16px; }
+  .pv-count{ font-size:12px; opacity:.8; color:#fff; letter-spacing:1px; }
+  .pv-exit{ border:none; border-radius:99px; padding:11px 20px; font-size:14px; font-weight:600;
+    color:#fff; background:linear-gradient(135deg,var(--rose),var(--pink));
+    box-shadow:0 6px 16px rgba(255,93,143,.35); cursor:pointer; transition:transform .1s ease; }
+  .pv-exit:active{ transform:scale(.94); }
+</style>
+</head>
+<body>
+  <div class="blob b1"></div>
+  <div class="blob b2"></div>
+  <div class="blob b3"></div>
+  <div id="stars"></div>
+
+  <!-- 开场：卓言写给谭笑的信 -->
+  <div id="intro">
+    <div class="envelope" id="envelope">
+      <div class="env-body"></div>
+      <div class="env-heart">💌</div>
+      <div class="env-flap"></div>
+    </div>
+    <div class="intro-title">写给谭笑的信</div>
+    <div class="intro-sub">点开信封吧，有我想对你说的话</div>
+  </div>
+
+  <!-- 主界面 -->
+  <div id="main">
+    <div class="top">
+      <div class="greet" id="greet">……</div>
+      <div class="date" id="date"></div>
+    </div>
+
+    <div class="center">
+      <div class="heart-btn" id="heart">💖</div>
+      <div class="big-text" id="bigText"><span class="caret"></span></div>
+      <div class="name-tag" id="nameTag">—— 这封信是写给你的</div>
+      <div class="counter">又多想了你 <b id="count">0</b> 次
+        <span class="sub">每戳一下，我就想你一次</span>
+      </div>
+      <div class="progress"><i id="bar"></i></div>
+    </div>
+
+    <div style="width:100%; display:flex; flex-direction:column; align-items:center; gap:16px;">
+      <div class="quote" id="quote">……</div>
+      <div class="toolbar">
+        <button class="btn" id="callBtn">点下试试 🔊</button>
+        <button class="btn ghost" id="whisperBtn">悄悄说一句 💬</button>
+        <button class="btn ghost" id="photoBtn">我们的回忆 📷</button>
+        <button class="btn ghost" id="shareBtn">复制一下 📋</button>
+        <button class="btn ghost" id="shakeBtn">摇一摇 📳</button>
+      </div>
+      <div class="hint">试试戳戳爱心，长按爱心 · 把手机摇一摇 · 点下试试</div>
+    </div>
+  </div>
+
+  <div id="egg"><div class="egg-card" id="eggCard"></div></div>
+  <div id="photoViewer">
+    <button class="pv-nav pv-prev" id="pvPrev" aria-label="上一张">‹</button>
+    <img id="pvImg" src="" alt="照片">
+    <button class="pv-nav pv-next" id="pvNext" aria-label="下一张">›</button>
+    <div class="pv-bar">
+      <span class="pv-count" id="pvCount"></span>
+      <button class="pv-exit" id="pvClose">退出 ✕</button>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+
+<script src="photo/manifest.js"></script>
+<script>
+(function(){
+  "use strict";
+  var $ = function(id){ return document.getElementById(id); };
+  var NAME = "谭笑";
+  var ME = "卓言";
+
+  /* ---------- 时间主题 ---------- */
+  var hour = new Date().getHours();
+  var isNight = (hour >= 19 || hour < 6);
+  if(isNight) document.body.classList.add("night");
+
+  var greetText = isNight ? NAME+"，夜深了，你睡了吗 🌙"
+                : (hour < 11 ? NAME+"，早安，今天也要开开心心 ☀️"
+                : hour < 18 ? NAME+"，下午好，今天过得还好吗 ☁️"
+                : NAME+"，天快黑了，今天过得还好吗 🌇");
+  $("greet").textContent = greetText;
+
+  var d = new Date();
+  var week = ["周日","周一","周二","周三","周四","周五","周六"][d.getDay()];
+  $("date").textContent = d.getFullYear()+"年"+(d.getMonth()+1)+"月"+d.getDate()+"日 · "+week;
+
+  /* 夜晚加星星 */
+  if(isNight){
+    var stars = $("stars");
+    for(var i=0;i<40;i++){
+      var s = document.createElement("div");
+      s.className = "star";
+      s.style.left = Math.random()*100+"%";
+      s.style.top = Math.random()*100+"%";
+      s.style.animationDelay = (Math.random()*3)+"s";
+      stars.appendChild(s);
+    }
+  }
+
+  /* ---------- 想对谭笑说的话 ---------- */
+  var quotes = [
+    "谭笑，我是"+ME+"，今天过得还好吗？",
+    "今天工作顺不顺利，是不是还是很烦？",
+    "你在做什么呢？有没有想起我？",
+    "今天吃了什么好吃的？",
+    "要不要一起打王者？我技术又上升了",
+    "还有多少天发工资？想想就开心了",
+    "你妈妈的螺蛳粉店开得怎么样啦？是不是快成宜宾首富了",
+    "我们一起去吃酸鸭锅吧，吃完再去看电影",
+    "祝你天天开心，能找到适合你的生活方式，养养花，玩玩游戏，理理财，然后尽快赚到100w，财富自由哈哈哈",
+    "我会一直喜欢你，记得你，记得我们之间的回忆，记得东莞，记得悠兰里，记得绿荷居，幸福花园，记得重庆，深圳，记得那些我们一起躲过的交警。哈哈哈好肉麻。",
+    "好了，暂时想不到其他肉麻的句子了，有空回来网站看看，我经常会更新"
+  ];
+  function pickQuote(){
+    return quotes[Math.floor(Math.random()*quotes.length)];
+  }
+  // 按顺序逐句，不重复（轮完一遍再从头开始）
+  var whisperIdx = 0;
+  function nextQuote(){
+    var q = quotes[whisperIdx % quotes.length];
+    whisperIdx++;
+    return q;
+  }
+  // 长的句子自动缩小字号，避免撑出屏幕
+  function setQuote(text){
+    var el = $("quote");
+    el.textContent = text;
+    el.style.fontSize = text.length > 70 ? "13.5px"
+                      : (text.length > 42 ? "15px" : "16px");
+  }
+
+  /* ---------- 计数持久化 ---------- */
+  var KEY = "missTanxiaoCount_v1";
+  var count = parseInt(localStorage.getItem(KEY) || "0", 10) || 0;
+  $("count").textContent = count;
+
+  function bump(){
+    count++;
+    localStorage.setItem(KEY, count);
+    $("count").textContent = count;
+    var cycle = count % 100;
+    $("bar").style.width = (cycle === 0 ? 100 : cycle) + "%";
+    // 每满 100 次先弹大彩蛋，其余按 8 的倍数弹
+    if(cycle === 0 && count > 0){ celebrate(); }
+    else if(count % 16 === 0){ comboEgg(); }
+  }
+
+  /* ---------- 打字机 ---------- */
+  var fullText = NAME+"，你好吗";
+  var ti = 0, tt;
+  function typeWriter(){
+    $("bigText").innerHTML = "";
+    ti = 0;
+    clearInterval(tt);
+    tt = setInterval(function(){
+      if(ti < fullText.length){
+        $("bigText").innerHTML = fullText.slice(0,ti+1) + '<span class="caret"></span>';
+        ti++;
+      } else {
+        clearInterval(tt);
+        setTimeout(function(){ $("bigText").innerHTML = fullText; }, 700);
+      }
+    }, 240);
+  }
+
+  /* ---------- 振动 ---------- */
+  function buzz(ms){ try{ if(navigator.vibrate) navigator.vibrate(ms); }catch(e){} }
+
+  /* ---------- 语音喊谭笑（系统 TTS，无需联网） ---------- */
+  function say(text){
+    try{
+      if(window.speechSynthesis){
+        window.speechSynthesis.cancel();
+        var u = new SpeechSynthesisUtterance(text);
+        u.lang = "zh-CN"; u.rate = 0.92; u.pitch = 1.15; u.volume = 1;
+        window.speechSynthesis.speak(u);
+      } else { toast(text); }
+    }catch(e){ toast(text); }
+  }
+
+  /* ---------- 飘浮粒子 ---------- */
+  function spawnParticle(x, y, ch){
+    var p = document.createElement("div");
+    p.className = "particle";
+    p.textContent = ch || (Math.random()<0.5 ? "💕" : "💗");
+    p.style.left = x + "px";
+    p.style.top = y + "px";
+    document.body.appendChild(p);
+    setTimeout(function(){ p.remove(); }, 1600);
+  }
+  function spawnPlus(x, y){
+    var p = document.createElement("div");
+    p.className = "plus"; p.textContent = "+1 💞";
+    p.style.left = x + "px"; p.style.top = y + "px";
+    document.body.appendChild(p);
+    setTimeout(function(){ p.remove(); }, 1000);
+  }
+
+  /* ---------- Toast ---------- */
+  var toastTimer;
+  function toast(msg){
+    var t = $("toast"); t.textContent = msg; t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ t.classList.remove("show"); }, 1800);
+  }
+
+  /* ---------- 彩蛋 ---------- */
+  function showEgg(html){
+    $("eggCard").innerHTML = html;
+    $("egg").classList.add("show");
+    setTimeout(function(){ $("egg").classList.remove("show"); }, 2800);
+  }
+  function celebrate(){
+    showEgg('<div class="big">🎉💖🎉</div><h3>戳了 '+count+' 次了</h3>'+
+            '<p>会不会很累呀，<br>奖励你今天可以随便使唤我。</p>');
+    buzz([60,40,60,40,120]);
+    heartRain();
+  }
+  function comboEgg(){
+    showEgg('<div class="big">💗</div><h3>又戳了 16 次咯</h3>'+
+            '<p>我在心里又多想了你 16 次，<br>今天怕是工作都不专心了</p>');
+  }
+  function heartRain(){
+    for(var i=0;i<60;i++){
+      (function(idx){
+        setTimeout(function(){
+          var r = document.createElement("div");
+          r.className = "rain";
+          r.textContent = ["💖","💗","💕","🌸","✨"][Math.floor(Math.random()*5)];
+          r.style.left = Math.random()*100+"%";
+          r.style.fontSize = (18+Math.random()*22)+"px";
+          r.style.animationDuration = (2.5+Math.random()*2)+"s";
+          document.body.appendChild(r);
+          setTimeout(function(){ r.remove(); }, 5000);
+        }, idx*40);
+      })(i);
+    }
+  }
+
+  /* ---------- 开场 ---------- */
+  var opened = false;
+  $("envelope").addEventListener("click", function(){
+    if(opened) return; opened = true;
+    this.classList.add("open");
+    buzz(40);
+    var self = this;
+    setTimeout(function(){
+      $("intro").classList.add("hide");
+      setTimeout(function(){
+        $("main").classList.add("show");
+        typeWriter();
+        setQuote(pickQuote());
+      }, 700);
+    }, 500);
+  });
+
+  /* ---------- 主爱心 ---------- */
+  var heart = $("heart");
+  heart.addEventListener("pointerdown", function(e){
+    e.stopPropagation();
+
+    heart.classList.add("pop");
+    setTimeout(function(){ heart.classList.remove("pop"); }, 130);
+    bump();
+    buzz(30);
+    spawnPlus(e.clientX-14, e.clientY-30);
+  });
+  // 长按彩蛋
+  var pressTimer;
+  heart.addEventListener("pointerdown", function(){
+    pressTimer = setTimeout(function(){
+      showEgg('<div class="big">💓</div><h3>被你发现了</h3>'+
+              '<p>居然按这么久，我的心跳得好厉害。</p>');
+      buzz([50,30,50]);
+    }, 700);
+  });
+  ["pointerup","pointerleave","pointercancel"].forEach(function(ev){
+    heart.addEventListener(ev, function(){ clearTimeout(pressTimer); });
+  });
+
+  /* ---------- 点空白处飘爱心 ---------- */
+  document.body.addEventListener("pointerdown", function(e){
+    if(opened && $("main").classList.contains("show")){
+      if(e.target === heart || heart.contains(e.target)) return;
+      spawnParticle(e.clientX-12, e.clientY-12);
+    }
+  });
+
+  /* ---------- 按钮 ---------- */
+  $("callBtn").addEventListener("click", function(){
+    say(NAME+"，你还好吗？");
+    toast("在念给你听啦 🔊 " + NAME + "，你还好吗？");
+  });
+  $("whisperBtn").addEventListener("click", function(){
+    setQuote(nextQuote());
+    buzz(20);
+  });
+
+  /* ---------- 我们的回忆（相册：左右箭头切换） ---------- */
+  var photoList = (window.PHOTO_LIST || []).slice();
+  var photoIndex = 0;
+  function showPhotoAt(i){
+    if(!photoList.length){
+      toast("还没有照片哦，先放几张到 photo 文件夹 📷");
+      return;
+    }
+    photoIndex = (i % photoList.length + photoList.length) % photoList.length;
+    var name = photoList[photoIndex];
+    $("pvImg").src = "photo/" + encodeURIComponent(name);
+    $("pvCount").textContent = "第 " + (photoIndex+1) + " / " + photoList.length + " 张";
+    $("photoViewer").classList.add("show");
+    buzz(20);
+  }
+  function closePhoto(){ $("photoViewer").classList.remove("show"); }
+  $("photoBtn").addEventListener("click", function(){
+    if($("photoViewer").classList.contains("show")){
+      showPhotoAt(photoIndex + 1);            // 已打开则换下一张
+    } else {
+      showPhotoAt(Math.floor(Math.random()*photoList.length)); // 随机起始一张
+    }
+  });
+  $("pvPrev").addEventListener("click", function(){ showPhotoAt(photoIndex - 1); });
+  $("pvNext").addEventListener("click", function(){ showPhotoAt(photoIndex + 1); });
+  $("pvClose").addEventListener("click", closePhoto);
+  $("photoViewer").addEventListener("click", function(e){
+    if(e.target === this) closePhoto(); // 点背景关闭
+  });
+
+  $("shareBtn").addEventListener("click", function(){
+    var text = NAME+"，想你了，今天过得还好吗？💌\n（这封信里，又多想了你 "+count+" 次）\n—— "+ME;
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(function(){ toast("已复制"); })
+        .catch(function(){ toast(text); });
+    } else { toast(text); }
+  });
+
+  /* ---------- 摇一摇 ---------- */
+  var shakeBtn = $("shakeBtn");
+  var listening = false;
+  function onMotion(e){
+    var a = e.accelerationIncludingGravity || e.acceleration;
+    if(!a) return;
+    var mag = Math.abs(a.x||0)+Math.abs(a.y||0)+Math.abs(a.z||0);
+    if(mag > 32){
+      clearTimeout(onMotion._t);
+      onMotion._t = setTimeout(function(){
+        bump(); spawnParticle(window.innerWidth/2-12, window.innerHeight/2-12, "💞");
+        toast("摇一下，又多想了你一次 💗");
+        buzz([40,30,40]);
+      }, 300);
+    }
+  }
+  shakeBtn.addEventListener("click", function(){
+    if(listening){ toast("已经在听啦，摇手机试试～"); return; }
+    var DME = window.DeviceMotionEvent;
+    if(DME && typeof DME.requestPermission === "function"){
+      DME.requestPermission().then(function(state){
+        if(state === "granted"){ startShake(); }
+        else toast("摇一摇没打开成功，戳戳爱心也一样 💕");
+      }).catch(function(){ toast("没拿到晃动权限 💕"); });
+    } else if(window.DeviceMotionEvent){
+      startShake();
+    } else {
+      toast("这台手机摇不了，戳戳爱心也一样 💗");
+    }
+  });
+  function startShake(){
+    listening = true;
+    window.addEventListener("devicemotion", onMotion);
+    toast("摇一摇已开启 📳 用力摇手机！");
+  }
+
+  /* 防误触：双击缩放关闭 */
+  document.addEventListener("gesturestart", function(e){ e.preventDefault(); });
+})();
+</script>
+</body>
+</html>
+ 
