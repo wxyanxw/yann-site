@@ -15,7 +15,7 @@ async function startServer(){
   child=spawn(process.execPath,['server/dev.js'],{cwd:new URL('..',import.meta.url),env:{...process.env,PORT:'0',LETTER_DATA_DIR:folder,LETTER_CONFIG_FILE:config,LETTER_STORE:'local',SUPABASE_URL:'',VERCEL:''},stdio:['ignore','pipe','pipe']});
   return new Promise((resolve,reject)=>{let output='';child.stdout.on('data',chunk=>{output+=chunk;const match=output.match(/http:\/\/127\.0\.0\.1:\d+/);if(match)resolve(match[0]);});child.on('error',reject);child.on('exit',code=>reject(new Error('本地测试服务退出：'+code)));});
 }
-async function openLetter(page,origin){await page.goto(origin+'/letter.html');await page.waitForFunction(()=>document.querySelector('#main').classList.contains('show'));}
+async function openLetter(page,origin){await page.goto(origin+'/letter.html');await page.locator('#envelope').waitFor({state:'visible'});assert.equal(await page.locator('#main').evaluate(element=>element.classList.contains('show')),false);await page.locator('#envelope').click();await page.waitForFunction(()=>document.querySelector('#main').classList.contains('show'));}
 async function enterPassword(page,wrong=false,password='4813'){
   await page.locator('#identitySubmit').waitFor({state:'visible'});
   await page.waitForFunction(()=>!document.querySelector('#identitySubmit').disabled);
@@ -51,7 +51,12 @@ try {
   assert.equal(await page.locator('#identityDialog').isVisible(),true);
   assert.equal(await page.locator('#main').isVisible(),false);
   await page.locator('#identityDialog').screenshot({path:join(artifacts,'verification-desktop.png')});
-  await enterPassword(page);await page.waitForFunction(()=>!document.querySelector('#identityDialog').open&&document.querySelector('#main').classList.contains('show'));
+  await enterPassword(page);await page.waitForFunction(()=>!document.querySelector('#identityDialog').open&&document.body.dataset.letterUnlocked==='true');
+  await page.waitForTimeout(1400);
+  assert.equal(await page.locator('#main').evaluate(element=>element.classList.contains('show')),false,'验证成功不能自动开信');
+  assert.equal(await page.locator('#envelope').evaluate(element=>element.classList.contains('open')),false);
+  await page.screenshot({path:join(artifacts,'manual-envelope-desktop.png')});
+  await page.locator('#envelope').click();await page.waitForFunction(()=>document.querySelector('#main').classList.contains('show'));
   assert.equal(await page.locator('#commentIdentity').innerText(),'以谭笑的名字留言');
   await page.locator('#commentBtn').click();await page.locator('#commentText').fill('<img src=x onerror=alert(1)> 今天也想你');await page.locator('#commentPublish').click();await page.waitForFunction(()=>document.querySelectorAll('.letter-comment').length===1);
   assert.equal(verificationCount,2,'进入后发布留言不能再次要求密码');
@@ -60,7 +65,7 @@ try {
   await page.waitForFunction(()=>document.querySelectorAll('.letter-danmaku-item').length>0);
   assert.equal(await page.locator('.letter-danmaku-item img').count(),0);
   assert.equal(await page.locator('#commentIdentity').innerText(),'以谭笑的名字留言');
-  console.log('✓ 点击十次后立即要求入口密码；错误密码看不到内容；正确密码自动开信并确定身份；留言无需再验证');
+  console.log('✓ 点击十次后先验证；错误密码看不到内容；正确密码后停在信封，手动点击才开信；留言无需再验证');
 
   const png=Buffer.from((await page.evaluate(()=>{const canvas=document.createElement('canvas');canvas.width=160;canvas.height=120;const c=canvas.getContext('2d');c.fillStyle='#ff8fab';c.fillRect(0,0,160,120);c.fillStyle='#fff7fb';c.fillRect(35,25,90,70);return canvas.toDataURL('image/png');})).split(',')[1],'base64');
   let uploads=0;page.on('request',request=>{if(request.url().includes('action=upload'))uploads++;});
@@ -86,7 +91,8 @@ try {
   assert.equal(await visitor.locator('#main').isVisible(),false);
   await visitor.locator('#identityDialog').screenshot({path:join(artifacts,'verification-mobile.png')});
   assert.equal((await visitor.request.post(origin+'/api/letter?action=comment',{headers:{Origin:origin},data:{text:'匿名写入'}})).status(),401);
-  await enterPassword(visitor,false,'2483');await visitor.waitForFunction(()=>document.querySelector('#main').classList.contains('show'));assert.equal(await visitor.locator('#identityDialog').isVisible(),false);
+  await enterPassword(visitor,false,'2483');await visitor.locator('#envelope').waitFor({state:'visible'});assert.equal(await visitor.locator('#identityDialog').isVisible(),false);
+  assert.equal(await visitor.locator('#main').evaluate(element=>element.classList.contains('show')),false);await visitor.locator('#envelope').click();await visitor.waitForFunction(()=>document.querySelector('#main').classList.contains('show'));
   await visitor.locator('#commentBtn').click();await visitor.waitForFunction(()=>document.querySelectorAll('.letter-comment').length===2);
   assert.equal(await visitor.locator('#commentIdentity').innerText(),'以卓言的名字留言');assert.equal(await visitor.locator('.letter-comment img').count(),7);assert.equal(await visitor.locator('.letter-comment-delete').count(),0);await visitor.locator('#commentsDialog').screenshot({path:join(artifacts,'comments-mobile.png')});
   await visitor.locator('[data-letter-close="commentsDialog"]').click();await visitor.locator('#photoBtn').click();await visitor.waitForFunction(()=>document.querySelector('#pvCount').textContent.includes('/ 50 张'));await visitor.locator('#pvUpload').click();await visitor.locator('#memoryUploadDialog').waitFor({state:'visible'});
@@ -118,7 +124,7 @@ try {
   console.log('✓ 卓言蓝色留言；切换/取消身份正确；只能删除自己的留言；弹幕持续移动循环，删除后移除；减少动态时静止');
 
   for(const width of [390,320,768]){
-    await visitor.setViewportSize({width,height:844});await visitor.reload();await visitor.waitForFunction(()=>document.querySelector('#main').classList.contains('show'));
+    await visitor.setViewportSize({width,height:844});await visitor.reload();await visitor.locator('#envelope').waitFor({state:'visible'});assert.equal(await visitor.locator('#main').evaluate(element=>element.classList.contains('show')),false);await visitor.locator('#envelope').click();await visitor.waitForFunction(()=>document.querySelector('#main').classList.contains('show'));
     assert.ok(await visitor.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await visitor.locator('#commentBtn').click();await visitor.locator('#commentAddImage').click();assert.equal(await visitor.locator('#identityDialog').isVisible(),false,'刷新后记住设备');
     assert.equal(await visitor.locator('#commentIdentity').innerText(),'以卓言的名字留言');const bounds=await visitor.locator('#commentsDialog').boundingBox();assert.ok(bounds.x>=0&&bounds.x+bounds.width<=width);await visitor.locator('[data-letter-close="commentsDialog"]').click();
   }

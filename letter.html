@@ -243,7 +243,7 @@
     <div class="letter-dialog-actions"><span id="memoryProgress" class="letter-status" role="status"></span><button id="memorySave" class="letter-primary" type="button" disabled>存进相册</button></div>
   </dialog>
   <dialog id="identityDialog" class="letter-dialog letter-verification" aria-labelledby="identityTitle">
-    <header class="letter-dialog-head"><div><p class="letter-eyebrow">JUST BETWEEN US</p><h2 id="identityTitle">输入我们的密码</h2><p id="identityDescription">先用密码打开这封信。<br>进入后，留言和照片都用这个身份。</p></div><button id="identityClose" class="letter-close" data-letter-close="identityDialog" type="button" aria-label="返回首页">×</button></header>
+    <header class="letter-dialog-head"><div><p class="letter-eyebrow">JUST BETWEEN US</p><h2 id="identityTitle">输入我们的密码</h2><p id="identityDescription">先确认身份，再手动点开信封。<br>留言和照片都沿用这个身份。</p></div><button id="identityClose" class="letter-close" data-letter-close="identityDialog" type="button" aria-label="返回首页">×</button></header>
     <form id="identityForm"><div class="letter-scroll"><label for="identityPassword">我们的密码</label><input id="identityPassword" class="letter-password" type="password" inputmode="numeric" autocomplete="current-password" maxlength="128" placeholder="输入密码" required autofocus><p id="identityStatus" class="letter-status" role="status"></p><p id="identityError" class="letter-error" role="alert"></p></div><div class="letter-dialog-actions"><button id="identitySubmit" class="letter-primary" type="submit">验证并继续</button></div></form>
   </dialog>
   <dialog id="commentDeleteDialog" class="letter-dialog letter-verification" aria-labelledby="commentDeleteTitle">
@@ -447,7 +447,6 @@
     }, 500);
   }
   $("envelope").addEventListener("click", openLetter);
-  window.addEventListener("letter:entry-approved", openLetter);
 
   /* ---------- 主爱心 ---------- */
   var heart = $("heart");

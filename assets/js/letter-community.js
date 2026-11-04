@@ -40,8 +40,8 @@ async function ensureVerified(force=false) {
   if(verificationPromise)return verificationPromise;
   verificationPromise=new Promise(resolve=>{verificationResolve=resolve;});
   $('identityTitle').textContent=force?'换个身份':'输入我们的密码';
-  $('identityDescription').textContent=force?'输入另一个密码切换身份。取消后继续使用当前身份。':'先用密码打开这封信。进入后，留言和照片都用这个身份。';
-  $('identitySubmit').textContent=force?'切换并继续':'打开这封信';
+  $('identityDescription').textContent=force?'输入另一个密码切换身份。取消后继续使用当前身份。':'先确认身份，再手动点开信封。留言和照片都沿用这个身份。';
+  $('identitySubmit').textContent=force?'切换并继续':'确认身份';
   $('identityClose').setAttribute('aria-label',force?'取消切换身份':'返回首页');
   $('identityPassword').value='';$('identityPassword').disabled=false;$('identitySubmit').disabled=false;notice('identityError');notice('identityStatus');dialogs.identity.showModal();
   return verificationPromise;
@@ -51,7 +51,6 @@ async function enterLetter(){
   entryPromise=(async()=>{
     if(!verified)for(const dialog of Object.values(dialogs))if(dialog!==dialogs.identity&&dialog.open)dialog.close();
     if(!await ensureVerified()){location.replace('./');return false;}
-    window.dispatchEvent(new Event('letter:entry-approved'));
     await Promise.all([loadMemories(),loadDialogue()]);return true;
   })();
   try{return await entryPromise;}finally{entryPromise=null;}

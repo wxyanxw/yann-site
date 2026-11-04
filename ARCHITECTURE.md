@@ -55,7 +55,7 @@ flowchart LR
 | `tests/geometry-browser.mjs` | DH 参数填写、取消/应用、NERO 限位及 Python 位姿验证 |
 | `tests/joint-types.test.js` | 直线关节驱动、连续多圈旋转、固定附件质量与视觉参数隔离 |
 | `tests/urdf-browser.mjs` | 真实 XML 解析、上传/重试、分支、Python 混合关节与源文件下载 |
-| `letter.html` | 隐藏信件/相册页；首页页脚信封点击 10 次后先验证密码，确认身份再自动开信，后续操作复用入口身份 |
+| `letter.html` | 隐藏信件/相册页；首页页脚信封点击 10 次后先验证密码，确认身份后，手动点击大信封再开信，后续操作复用入口身份 |
 
 网站使用原生 ES Modules，无构建步骤。渲染与手动控制在主线程执行；Python 在 Worker 中执行，长时间计算可以通过「停止」终止，不会直接阻塞编辑器。Python 运行与手动控制共享同一个动力学实现及状态结构。
 
