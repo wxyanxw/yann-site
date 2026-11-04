@@ -50,7 +50,7 @@ function route() {
   fpsFrames=0;fpsTime=performance.now();
   $('home-page').hidden=isLab; $('lab-page').hidden=!isLab;
   document.querySelectorAll('[data-nav]').forEach(x=>{const active=x.dataset.nav===(isLab?'lab':'home');x.classList.toggle('active',active);if(active)x.setAttribute('aria-current','page');else x.removeAttribute('aria-current');});
-  document.title=isLab?'机械臂实验室 — YANN':'YANN — 让想法动起来';
+  document.title=isLab?'机械臂实验室 — yann':'yann — 让想法动起来';
   if (isLab && labScene===undefined) labScene=setupScene('lab-scene',engine);
   if (!isLab && heroScene===undefined) heroScene=setupScene('hero-scene',heroEngine,true);
   requestAnimationFrame(()=>{(isLab?labScene:heroScene)?.resize();});
