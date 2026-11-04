@@ -21,14 +21,14 @@ function device(req) {
   const token=(req.headers.cookie||'').split(';').map(x=>x.trim()).find(x=>x.startsWith(COOKIE+'='))?.slice(COOKIE.length+1);
   if(!token)return null;
   const parts=token.split('.'),[id]=parts;
-  if(!UUID.test(id)||![2,3].includes(parts.length))return null;
+  if(!UUID.test(id)||![2,3,4].includes(parts.length)||(parts.length===4&&parts[2]!=='entry'))return null;
   const authorId=parts.length===2?'tanxiao':parts[1],signature=parts.at(-1);
   const expected=Buffer.from(sign(parts.slice(0,-1).join('.'))),actual=Buffer.from(signature);
   if(actual.length!==expected.length||!timingSafeEqual(actual,expected))return null;
   const user=configuredUsers().find(user=>user.id===authorId);
-  return user?{id,author:publicUser(user)}:null;
+  return user?{id,author:publicUser(user),entryVerified:parts.length===4}:null;
 }
-function requiredDevice(req) { const session=device(req);if(!session)throw new RequestError(401,'先输入我们的密码，再留言或上传照片吧。','verification_required');return session; }
+function requiredDevice(req) { const session=device(req);if(!session?.entryVerified)throw new RequestError(401,'请先输入我们的密码，打开这封信。','verification_required');return session; }
 const commentAuthor=row=>row.data.author||LEGACY_AUTHOR;
 async function body(req,limit=24000) {
   if(Number(req.headers['content-length'])>limit)throw new RequestError(413,'内容太大，请减少图片或文字。');
@@ -84,7 +84,7 @@ export async function handleLetter(req,res) {
       if(!source || source.host!==host || !['http:','https:'].includes(source.protocol))throw new RequestError(403,'请从本站页面提交。');
     }
     const store=await getStore();
-    if(req.method==='GET' && action==='session'){const session=device(req);return send(res,200,{verified:!!session,name:session?.author.name||null,profile:session?.author||null,maxCommentImages:MAX_COMMENT_IMAGES});}
+    if(req.method==='GET' && action==='session'){const session=device(req);return send(res,200,{verified:!!session?.entryVerified,name:session?.author.name||null,profile:session?.author||null,maxCommentImages:MAX_COMMENT_IMAGES});}
     if(req.method==='POST' && action==='verify') {
       const ip=process.env.VERCEL ? String(req.headers['x-forwarded-for']||'').split(',')[0] : req.socket?.remoteAddress||'local';
       if(!await store.rateLimit('password:'+sign(ip),8,600)){res.setHeader('Retry-After','600');throw new RequestError(429,'试得太多啦，十分钟后再来。');}
@@ -93,10 +93,11 @@ export async function handleLetter(req,res) {
       const digest=value=>createHash('sha256').update(value).digest();
       const user=configuredUsers().find(user=>timingSafeEqual(digest(data.password),digest(user.password)));
       if(!user)throw new RequestError(422,'密码不对，再试一次吧。','password_incorrect');
-      const id=device(req)?.id||randomUUID(),payload=id+'.'+user.id,secure=req.socket?.encrypted || (process.env.VERCEL && req.headers['x-forwarded-proto']==='https');
+      const id=device(req)?.id||randomUUID(),payload=id+'.'+user.id+'.entry',secure=req.socket?.encrypted || (process.env.VERCEL && req.headers['x-forwarded-proto']==='https');
       res.setHeader('Set-Cookie',`${COOKIE}=${payload}.${sign(payload)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=315360000${secure?'; Secure':''}`);
       return send(res,200,{verified:true,name:user.name,profile:publicUser(user)});
     }
+    if(req.method==='GET'&&['comments','dialogue','memories','image'].includes(action))requiredDevice(req);
     if(req.method==='GET' && action==='comments') {
       const limit=20,rows=await store.list('comment',cursor(url.searchParams.get('cursor')),limit+1);
       const items=await Promise.all(rows.map(async row=>({id:row.id,author:commentAuthor(row).name,authorId:commentAuthor(row).id,theme:commentAuthor(row).theme,text:row.text,createdAt:row.created_at,images:(await Promise.all((row.data.imageIds||[]).map(id=>store.get(id)))).filter(Boolean).map(photo)})));
@@ -149,7 +150,7 @@ export async function handleLetter(req,res) {
       const row=await store.get(id);
       if(!row||!['memory','attachment'].includes(row.kind)||(row.kind==='attachment'&&!row.data.attached&&row.owner!==device(req)?.id))throw new RequestError(404,'没有这张照片。');
       const data=await store.getObject(row.data.key);
-      res.statusCode=200;res.setHeader('Content-Type','image/jpeg');res.setHeader('Content-Length',data.length);res.setHeader('Cache-Control',row.kind==='memory'||row.data.attached?'public, max-age=86400, immutable':'private, no-store');return res.end(data);
+      res.statusCode=200;res.setHeader('Content-Type','image/jpeg');res.setHeader('Content-Length',data.length);res.setHeader('Cache-Control','private, no-store');return res.end(data);
     }
     throw new RequestError(404,'没有这个接口。');
   } catch(error) {

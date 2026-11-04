@@ -14,13 +14,15 @@ const { getStore }=await import('../server/letter-store.js');
 const server=createServer(handleLetter);await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 const origin=`http://127.0.0.1:${server.address().port}`;
 const jpeg=Buffer.from('/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAAMABADASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwDtKKKKzPsD/9k=','base64');
-async function request(action,{method='GET',json,bytes,cookie,params={},source=origin}={}) {
+let readCookie;
+async function request(action,{method='GET',json,bytes,cookie=method==='GET'?readCookie:undefined,params={},source=origin}={}) {
   const response=await fetch(origin+'/api/letter?'+new URLSearchParams({action,...params}),{method,headers:{...(method==='POST'?{Origin:source}:{}),...(cookie?{Cookie:cookie}:{}),...(json!==undefined?{'Content-Type':'application/json'}:{}),...(bytes?{'Content-Type':'image/jpeg'}:{})},...(json!==undefined?{body:JSON.stringify(json)}:bytes?{body:bytes}:{})});
   const data=response.headers.get('content-type')?.includes('json')?await response.json():Buffer.from(await response.arrayBuffer());
   return {status:response.status,data,cookie:response.headers.get('set-cookie')};
 }
 try {
   assert.equal((await request('session')).data.verified,false);
+  for(const action of ['comments','dialogue','memories','image'])assert.equal((await request(action)).status,401,'入口验证前不能读取上传的内容');
   assert.equal((await request('comment',{method:'POST',json:{text:'绕过验证'}})).status,401);
   assert.equal((await request('upload',{method:'POST',bytes:jpeg,params:{kind:'memory'}})).status,401);
   assert.equal((await request('comment',{method:'POST',json:{text:'伪造设备'},cookie:'yann_letter_device=00000000-0000-0000-0000-000000000001.fake'})).status,401);
@@ -31,10 +33,17 @@ try {
   assert.equal((await request('session')).data.verified,false);
   const accepted=await request('verify',{method:'POST',json:{password:'4813'}});assert.equal(accepted.status,200);assert.match(accepted.cookie,/HttpOnly; SameSite=Strict/);
   const cookie=accepted.cookie.split(';')[0];assert.equal((await request('session',{cookie})).data.verified,true);
+  readCookie=cookie;
   assert.deepEqual(accepted.data.profile,{id:'tanxiao',name:'谭笑',theme:'pink'});
   const legacyId=cookie.split('=')[1].split('.')[0],legacySignature=createHmac('sha256',await readFile(join(folder,'session-secret'),'utf8')).update(legacyId).digest('base64url');
   const legacyCookie=`yann_letter_device=${legacyId}.${legacySignature}`;
   assert.equal((await request('session',{cookie:legacyCookie})).data.profile.id,'tanxiao');
+  assert.equal((await request('session',{cookie:legacyCookie})).data.verified,false,'旧版留言凭据需要补做一次入口验证');
+  assert.equal((await request('comments',{cookie:legacyCookie})).status,401);
+  const oldProfilePayload=legacyId+'.zhuoyan',oldProfileSignature=createHmac('sha256',await readFile(join(folder,'session-secret'),'utf8')).update(oldProfilePayload).digest('base64url');
+  const oldProfileCookie=`yann_letter_device=${oldProfilePayload}.${oldProfileSignature}`;
+  assert.equal((await request('session',{cookie:oldProfileCookie})).data.profile.id,'zhuoyan');
+  assert.equal((await request('session',{cookie:oldProfileCookie})).data.verified,false);
   assert.equal((await request('session',{cookie:cookie.replace('.tanxiao.','.zhuoyan.')})).data.verified,false);
   await writeFile(process.env.LETTER_CONFIG_FILE,JSON.stringify({users:users.map(user=>user.id==='tanxiao'?{...user,password:'2468'}:user)}));
   assert.equal((await request('verify',{method:'POST',json:{password:'4813'}})).status,422);
@@ -47,12 +56,13 @@ try {
   assert.equal((await request('upload',{method:'POST',cookie,bytes:Buffer.alloc(MAX_IMAGE_BYTES+1),params:{kind:'memory'}})).status,413);
   const pending=await request('upload',{method:'POST',cookie,bytes:jpeg,params:{kind:'attachment',name:'测试留言.jpg'}});assert.equal(pending.status,201);
   const pendingKey=(await (await getStore()).get(pending.data.id)).data.key;
-  assert.equal((await request('image',{params:{id:pending.data.id}})).status,404);
+  assert.equal((await request('image',{cookie:null,params:{id:pending.data.id}})).status,401);
   assert.equal((await request('image',{cookie,params:{id:pending.data.id}})).status,200);
   const memory=await request('upload',{method:'POST',cookie,bytes:jpeg,params:{kind:'memory',name:'回忆.jpg',caption:'一起度过的一天'}});assert.equal(memory.status,201);
   assert.equal((await request('comment',{method:'POST',cookie,json:{text:'不能把相册图直接绑定留言',imageIds:[memory.data.id]}})).status,400);
   const secondAccepted=await request('verify',{method:'POST',json:{password:'2483'}}),secondCookie=secondAccepted.cookie.split(';')[0];
   assert.deepEqual(secondAccepted.data.profile,{id:'zhuoyan',name:'卓言',theme:'blue'});
+  assert.equal((await request('image',{cookie:secondCookie,params:{id:pending.data.id}})).status,404);
   assert.equal((await request('comment',{method:'POST',cookie:secondCookie,json:{text:'不能占用另一设备的草稿图',imageIds:[pending.data.id]}})).status,400);
   const text='<img src=x onerror=alert(1)> 今天也想你';
   const tanComment=await request('comment',{method:'POST',cookie,json:{text,imageIds:[pending.data.id],author:'卓言',theme:'blue'}});assert.equal(tanComment.status,201);

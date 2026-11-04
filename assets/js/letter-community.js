@@ -6,13 +6,14 @@ let comments=[],commentCursor=null,commentLoading=false,memoriesLoading=null;
 let commentFiles=[],memoryFiles=[],preparingComment=false,preparingMemory=false,publishing=false,memoryUploading=false;
 let verificationRequest=0;
 let currentProfile=null,maxCommentImages=30,deleteTarget=null,deleting=false;
+let entryPromise=null;
 
 async function api(action,{method='GET',body,params={},headers={}}={}) {
   if(location.protocol==='file:')throw new Error('请从网站地址打开这封信，才能保存留言和照片。');
   const query=new URLSearchParams({action,...params});
   const response=await fetch('/api/letter?'+query,{method,credentials:'same-origin',cache:'no-store',headers,...(body!==undefined?{body}:{}),signal:AbortSignal.timeout(30000)});
   const data=await response.json().catch(()=>({error:'暂时连不上留言和相册，请稍后再试。'}));
-  if(!response.ok){const error=new Error(data.error||'保存失败，请稍后再试。');error.status=response.status;error.code=data.code;if(response.status===401)setSession({verified:false});throw error;}
+  if(!response.ok){const error=new Error(data.error||'保存失败，请稍后再试。');error.status=response.status;error.code=data.code;if(response.status===401){setSession({verified:false});enterLetter();}throw error;}
   return data;
 }
 const post=(action,data={})=>api(action,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
@@ -20,9 +21,14 @@ function notice(id,text=''){ $(id).textContent=text; }
 function rememberDraft(){try{localStorage.setItem('yann.letter.comment-draft.v1',$('commentText').value);}catch{}}
 try{$('commentText').value=localStorage.getItem('yann.letter.comment-draft.v1')||'';}catch{}
 const sessionReady=api('session').then(setSession).catch(()=>{});
-function setSession(data){verified=!!data.verified;currentProfile=data.profile||null;maxCommentImages=data.maxCommentImages||maxCommentImages;updateIdentity();renderComments();}
+function setSession(data){
+  verified=!!data.verified;currentProfile=data.profile||null;maxCommentImages=data.maxCommentImages||maxCommentImages;
+  document.body.classList.toggle('letter-locked',!verified);document.body.dataset.letterUnlocked=String(verified);
+  $('main').inert=!verified;$('intro').inert=!verified;
+  updateIdentity();renderComments();
+}
 function updateIdentity(){
-  $('commentIdentity').textContent=verified?`以${currentProfile.name}的名字留言`:'首次发布需要输入我们的密码';
+  $('commentIdentity').textContent=verified?`以${currentProfile.name}的名字留言`:'进入信件时确认身份';
   $('commentSwitchIdentity').textContent=verified?'切换身份':'验证身份';
   $('commentImageHint').textContent=`每条最多 ${maxCommentImages} 张图片 · 自动压缩`;
   for(const dialog of Object.values(dialogs))dialog.dataset.theme=currentProfile?.theme||'pink';
@@ -33,8 +39,22 @@ async function ensureVerified(force=false) {
   if(verified&&!force)return true;
   if(verificationPromise)return verificationPromise;
   verificationPromise=new Promise(resolve=>{verificationResolve=resolve;});
+  $('identityTitle').textContent=force?'换个身份':'输入我们的密码';
+  $('identityDescription').textContent=force?'输入另一个密码切换身份。取消后继续使用当前身份。':'先用密码打开这封信。进入后，留言和照片都用这个身份。';
+  $('identitySubmit').textContent=force?'切换并继续':'打开这封信';
+  $('identityClose').setAttribute('aria-label',force?'取消切换身份':'返回首页');
   $('identityPassword').value='';$('identityPassword').disabled=false;$('identitySubmit').disabled=false;notice('identityError');notice('identityStatus');dialogs.identity.showModal();
   return verificationPromise;
+}
+async function enterLetter(){
+  if(entryPromise)return entryPromise;
+  entryPromise=(async()=>{
+    if(!verified)for(const dialog of Object.values(dialogs))if(dialog!==dialogs.identity&&dialog.open)dialog.close();
+    if(!await ensureVerified()){location.replace('./');return false;}
+    window.dispatchEvent(new Event('letter:entry-approved'));
+    await Promise.all([loadMemories(),loadDialogue()]);return true;
+  })();
+  try{return await entryPromise;}finally{entryPromise=null;}
 }
 $('identityForm').addEventListener('submit',async event=>{
   event.preventDefault();if($('identitySubmit').disabled)return;
@@ -156,6 +176,7 @@ $('commentForm').addEventListener('submit',async event=>{
   finally{publishing=false;$('commentPublish').disabled=false;$('commentAddImage').disabled=false;$('commentText').disabled=false;$('commentSwitchIdentity').disabled=false;renderPreviews('comment');}
 });
 async function loadMemories(force=false) {
+  if(!verified)return;
   if(memoriesLoading){await memoriesLoading;if(!force)return;}
   const request=(async()=>{
     try{const items=[];let next;do{const page=await api('memories',{params:next?{cursor:next}:{}});items.push(...page.items);next=page.nextCursor;}while(next);window.dispatchEvent(new CustomEvent('letter:photos',{detail:{photos:items}}));}
@@ -211,6 +232,7 @@ function renderDanmaku(){
   syncDanmakuPlayback();
 }
 async function loadDialogue(){
+  if(!verified)return;
   if(dialogueLoading)return;dialogueLoading=true;
   try{const data=await api('dialogue'),signature=JSON.stringify(data.items);if(signature!==dialogueSignature){dialogue=data.items;dialogueSignature=signature;renderDanmaku();}}
   catch{/* 留言服务暂时不可用时继续展示已收到的文字。 */}
@@ -220,9 +242,8 @@ const playbackObserver=new MutationObserver(syncDanmakuPlayback);
 playbackObserver.observe($('main'),{attributes:true,attributeFilter:['class']});
 playbackObserver.observe($('photoViewer'),{attributes:true,attributeFilter:['class']});
 for(const dialog of Object.values(dialogs))playbackObserver.observe(dialog,{attributes:true,attributeFilter:['open']});
-document.addEventListener('visibilitychange',()=>{syncDanmakuPlayback();if(!document.hidden)loadDialogue();});
+document.addEventListener('visibilitychange',()=>{syncDanmakuPlayback();if(!document.hidden&&verified)loadDialogue();});
 motionPreference.addEventListener('change',renderDanmaku);
 let resizeTimer;window.addEventListener('resize',()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(renderDanmaku,150);});
-setInterval(()=>{if(document.hidden)return;loadDialogue();if(dialogs.comments.open&&!publishing&&!deleting&&!commentCursor)loadComments();if($('photoViewer').classList.contains('show'))loadMemories();},20000);
-loadDialogue();
-loadMemories();
+setInterval(()=>{if(document.hidden||!verified)return;loadDialogue();if(dialogs.comments.open&&!publishing&&!deleting&&!commentCursor)loadComments();if($('photoViewer').classList.contains('show'))loadMemories();},20000);
+enterLetter();

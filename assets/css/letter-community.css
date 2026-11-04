@@ -13,3 +13,4 @@
 @media(max-width:520px){.letter-danmaku-item{font-size:11px;padding:7px 12px}.letter-composer .letter-previews{max-height:100px}#commentImageHint{margin-top:5px}.letter-identity-row .letter-small-button{padding:6px 10px}}
 @media(prefers-reduced-motion:reduce){.letter-danmaku{transition:none}}
 .letter-comment{--rose:#d65d8a}.letter-comment[data-theme=blue]{--rose:#438dcc}.letter-comment[data-theme=pink] strong{color:#b74f79}.night .letter-comment{--rose:#ff9ec4}.night .letter-comment[data-theme=pink] strong{color:#ffb0cf}.night .letter-comment[data-theme=blue]{--rose:#9ecfff}
+.letter-locked #intro,.letter-locked #main,.letter-locked #photoViewer,.letter-locked #letterDanmaku,.letter-locked #letterEffects,.letter-locked .letter-dialog:not(#identityDialog){visibility:hidden!important;pointer-events:none!important}.letter-locked #identityDialog::backdrop{background:linear-gradient(160deg,var(--bg1),var(--bg2),var(--bg3));backdrop-filter:none}

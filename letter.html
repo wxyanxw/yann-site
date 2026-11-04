@@ -173,13 +173,13 @@
 </style>
 <link rel="stylesheet" href="assets/css/letter-community.css">
 </head>
-<body>
+<body class="letter-locked">
   <div class="letter-backdrop" aria-hidden="true"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div><div id="stars"></div></div>
   <div id="letterDanmaku" class="letter-danmaku" aria-hidden="true"></div>
   <div id="letterEffects" class="letter-effects" aria-hidden="true"></div>
 
   <!-- 开场：卓言写给谭笑的信 -->
-  <div id="intro">
+  <div id="intro" inert>
     <div class="envelope" id="envelope">
       <div class="env-body"></div>
       <div class="env-heart">💌</div>
@@ -190,7 +190,7 @@
   </div>
 
   <!-- 主界面 -->
-  <div id="main">
+  <div id="main" inert>
     <div class="top">
       <div class="greet" id="greet">……</div>
       <div class="date" id="date"></div>
@@ -243,7 +243,7 @@
     <div class="letter-dialog-actions"><span id="memoryProgress" class="letter-status" role="status"></span><button id="memorySave" class="letter-primary" type="button" disabled>存进相册</button></div>
   </dialog>
   <dialog id="identityDialog" class="letter-dialog letter-verification" aria-labelledby="identityTitle">
-    <header class="letter-dialog-head"><div><p class="letter-eyebrow">JUST BETWEEN US</p><h2 id="identityTitle">输入我们的密码</h2><p>密码决定留言的名字，<br>记住身份后，也可以随时切换。</p></div><button class="letter-close" data-letter-close="identityDialog" type="button" aria-label="取消密码验证">×</button></header>
+    <header class="letter-dialog-head"><div><p class="letter-eyebrow">JUST BETWEEN US</p><h2 id="identityTitle">输入我们的密码</h2><p id="identityDescription">先用密码打开这封信。<br>进入后，留言和照片都用这个身份。</p></div><button id="identityClose" class="letter-close" data-letter-close="identityDialog" type="button" aria-label="返回首页">×</button></header>
     <form id="identityForm"><div class="letter-scroll"><label for="identityPassword">我们的密码</label><input id="identityPassword" class="letter-password" type="password" inputmode="numeric" autocomplete="current-password" maxlength="128" placeholder="输入密码" required autofocus><p id="identityStatus" class="letter-status" role="status"></p><p id="identityError" class="letter-error" role="alert"></p></div><div class="letter-dialog-actions"><button id="identitySubmit" class="letter-primary" type="submit">验证并继续</button></div></form>
   </dialog>
   <dialog id="commentDeleteDialog" class="letter-dialog letter-verification" aria-labelledby="commentDeleteTitle">
@@ -432,11 +432,10 @@
 
   /* ---------- 开场 ---------- */
   var opened = false;
-  $("envelope").addEventListener("click", function(){
-    if(opened) return; opened = true;
-    this.classList.add("open");
+  function openLetter(){
+    if(opened || document.body.dataset.letterUnlocked!=="true") return; opened = true;
+    $("envelope").classList.add("open");
     buzz(40);
-    var self = this;
     setTimeout(function(){
       $("intro").classList.add("hide");
       setTimeout(function(){
@@ -446,7 +445,9 @@
         setQuote(pickQuote());
       }, 700);
     }, 500);
-  });
+  }
+  $("envelope").addEventListener("click", openLetter);
+  window.addEventListener("letter:entry-approved", openLetter);
 
   /* ---------- 主爱心 ---------- */
   var heart = $("heart");

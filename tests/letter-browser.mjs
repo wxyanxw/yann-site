@@ -1,11 +1,13 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, rm, writeFile, readFile } from 'node:fs/promises';
+import { createHmac, randomUUID, randomBytes } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const { chromium }=await import(process.env.PLAYWRIGHT_MODULE||'playwright-core');
 const folder=await mkdtemp(join(tmpdir(),'yann-letter-browser-'));
+await writeFile(join(folder,'session-secret'),randomBytes(48).toString('hex'));
 const config=join(folder,'letter-config.json');await writeFile(config,JSON.stringify({users:[{id:'tanxiao',name:'谭笑',password:'4813',theme:'pink'},{id:'zhuoyan',name:'卓言',password:'2483',theme:'blue'}]}));
 const artifacts=process.env.ARTIFACTS_DIR||'/tmp/yann-letter-community-checks';await mkdir(artifacts,{recursive:true});
 let child,browser;
@@ -13,7 +15,7 @@ async function startServer(){
   child=spawn(process.execPath,['server/dev.js'],{cwd:new URL('..',import.meta.url),env:{...process.env,PORT:'0',LETTER_DATA_DIR:folder,LETTER_CONFIG_FILE:config,LETTER_STORE:'local',SUPABASE_URL:'',VERCEL:''},stdio:['ignore','pipe','pipe']});
   return new Promise((resolve,reject)=>{let output='';child.stdout.on('data',chunk=>{output+=chunk;const match=output.match(/http:\/\/127\.0\.0\.1:\d+/);if(match)resolve(match[0]);});child.on('error',reject);child.on('exit',code=>reject(new Error('本地测试服务退出：'+code)));});
 }
-async function openLetter(page,origin){await page.goto(origin+'/letter.html');await page.locator('#envelope').click();await page.waitForFunction(()=>document.querySelector('#main').classList.contains('show'));}
+async function openLetter(page,origin){await page.goto(origin+'/letter.html');await page.waitForFunction(()=>document.querySelector('#main').classList.contains('show'));}
 async function enterPassword(page,wrong=false,password='4813'){
   await page.locator('#identitySubmit').waitFor({state:'visible'});
   await page.waitForFunction(()=>!document.querySelector('#identitySubmit').disabled);
@@ -25,24 +27,40 @@ function observe(page){page.on('pageerror',error=>errors.push(error.message));pa
 try {
   let origin=await startServer();
   browser=await chromium.launch({executablePath:process.env.CHROME_PATH||'/usr/bin/google-chrome',headless:true,args:['--no-sandbox','--enable-unsafe-swiftshader','--use-angle=swiftshader']});
+  const canceled=await browser.newContext({viewport:{width:390,height:844}}),canceledPage=await canceled.newPage();
+  await canceledPage.goto(origin+'/letter.html');await canceledPage.locator('#identityDialog').waitFor({state:'visible'});await canceledPage.keyboard.press('Escape');await canceledPage.waitForURL(origin+'/');await canceled.close();
   const first=await browser.newContext({viewport:{width:1100,height:900},reducedMotion:'reduce'}),page=await first.newPage();observe(page);
-  await openLetter(page,origin);
+  const oldPayload=randomUUID()+'.tanxiao',oldSignature=createHmac('sha256',await readFile(join(folder,'session-secret'),'utf8')).update(oldPayload).digest('base64url');
+  await first.addCookies([{name:'yann_letter_device',value:oldPayload+'.'+oldSignature,url:origin,httpOnly:true,sameSite:'Strict'}]);
+  let verificationCount=0;page.on('request',request=>{if(request.url().includes('action=verify'))verificationCount++;});
+  await page.goto(origin+'/');
+  await page.waitForFunction(()=>document.querySelector('#hero-scene canvas'));
+  for(let i=0;i<9;i++)await page.locator('#letter-envelope').click();
+  assert.equal(new URL(page.url()).pathname,'/','前九次不进入信件');
+  await page.locator('#letter-envelope').click();await page.waitForURL('**/letter.html');await page.locator('#identityDialog').waitFor({state:'visible'});
+  assert.equal(await page.locator('#main').isVisible(),false);assert.equal(await page.locator('#intro').isVisible(),false);
+  assert.equal(await page.locator('#main').evaluate(element=>element.inert),true);
+  assert.equal(await page.locator('.letter-danmaku-item').count(),0);
   assert.equal((await page.request.get(origin+'/server/letter-service.js')).status(),404);
   assert.equal((await page.request.get(origin+'/server/letter-config.json')).status(),404);
   assert.equal((await page.request.get(origin+'/.letter-data/session-secret')).status(),404);
   assert.equal((await page.request.get(origin+'/信件留言与相册配置说明.md')).status(),404);
   assert.equal((await page.request.get(origin+'/public/server/letter-config.json')).status(),404);
-  await page.locator('#commentBtn').click();await page.locator('#commentText').fill('<img src=x onerror=alert(1)> 今天也想你');await page.locator('#commentPublish').click();
+  assert.equal((await page.request.get(origin+'/api/letter?action=comments')).status(),401);
   await enterPassword(page,true);await page.waitForFunction(()=>document.querySelector('#identityError').textContent.includes('密码不对'));
   assert.equal(await page.locator('#identityDialog').isVisible(),true);
+  assert.equal(await page.locator('#main').isVisible(),false);
   await page.locator('#identityDialog').screenshot({path:join(artifacts,'verification-desktop.png')});
-  await enterPassword(page);await page.waitForFunction(()=>!document.querySelector('#identityDialog').open&&document.querySelectorAll('.letter-comment').length===1);
+  await enterPassword(page);await page.waitForFunction(()=>!document.querySelector('#identityDialog').open&&document.querySelector('#main').classList.contains('show'));
+  assert.equal(await page.locator('#commentIdentity').innerText(),'以谭笑的名字留言');
+  await page.locator('#commentBtn').click();await page.locator('#commentText').fill('<img src=x onerror=alert(1)> 今天也想你');await page.locator('#commentPublish').click();await page.waitForFunction(()=>document.querySelectorAll('.letter-comment').length===1);
+  assert.equal(verificationCount,2,'进入后发布留言不能再次要求密码');
   assert.equal(await page.locator('.letter-comment-text').innerText(),'<img src=x onerror=alert(1)> 今天也想你');assert.equal(await page.locator('.letter-comment-text img').count(),0);
   assert.equal(await page.locator('.letter-comment').getAttribute('data-theme'),'pink');assert.equal(await page.locator('.letter-comment-delete').count(),1);
   await page.waitForFunction(()=>document.querySelectorAll('.letter-danmaku-item').length>0);
   assert.equal(await page.locator('.letter-danmaku-item img').count(),0);
   assert.equal(await page.locator('#commentIdentity').innerText(),'以谭笑的名字留言');
-  console.log('✓ 错误密码不解锁，正确密码后自动发布；配置文件无法从网页访问；留言按纯文本显示');
+  console.log('✓ 点击十次后立即要求入口密码；错误密码看不到内容；正确密码自动开信并确定身份；留言无需再验证');
 
   const png=Buffer.from((await page.evaluate(()=>{const canvas=document.createElement('canvas');canvas.width=160;canvas.height=120;const c=canvas.getContext('2d');c.fillStyle='#ff8fab';c.fillRect(0,0,160,120);c.fillStyle='#fff7fb';c.fillRect(35,25,90,70);return canvas.toDataURL('image/png');})).split(',')[1],'base64');
   let uploads=0;page.on('request',request=>{if(request.url().includes('action=upload'))uploads++;});
@@ -63,16 +81,19 @@ try {
   assert.equal(await page.locator('#pvCaption').innerText(),'一起度过的一天');await page.waitForFunction(()=>document.querySelector('#pvImg').complete&&document.querySelector('#pvImg').naturalWidth>0);
   console.log('✓ 已验证设备上传相册免再输密码；48张原图加2张新图，留言图片没有混入相册');
 
-  const second=await browser.newContext({viewport:{width:390,height:844},reducedMotion:'reduce'}),visitor=await second.newPage();observe(visitor);await openLetter(visitor,origin);await visitor.locator('#commentBtn').click();await visitor.waitForFunction(()=>document.querySelectorAll('.letter-comment').length===2);
-  assert.equal(await visitor.locator('.letter-comment img').count(),7);assert.equal(await visitor.locator('.letter-comment-delete').count(),0);await visitor.locator('#commentsDialog').screenshot({path:join(artifacts,'comments-mobile.png')});
-  await visitor.locator('[data-letter-close="commentsDialog"]').click();await visitor.locator('#photoBtn').click();await visitor.waitForFunction(()=>document.querySelector('#pvCount').textContent.includes('/ 50 张'));await visitor.locator('#pvUpload').click();await visitor.waitForFunction(()=>!document.querySelector('#identitySubmit').disabled);
+  assert.equal(verificationCount,2,'图片留言和相册上传都复用入口身份');
+  const second=await browser.newContext({viewport:{width:390,height:844},reducedMotion:'reduce'}),visitor=await second.newPage();observe(visitor);await visitor.goto(origin+'/letter.html');await visitor.locator('#identityDialog').waitFor({state:'visible'});
+  assert.equal(await visitor.locator('#main').isVisible(),false);
   await visitor.locator('#identityDialog').screenshot({path:join(artifacts,'verification-mobile.png')});
   assert.equal((await visitor.request.post(origin+'/api/letter?action=comment',{headers:{Origin:origin},data:{text:'匿名写入'}})).status(),401);
-  await enterPassword(visitor,false,'2483');await visitor.waitForFunction(()=>document.querySelector('#memoryUploadDialog').open);assert.equal(await visitor.locator('#identityDialog').isVisible(),false);
+  await enterPassword(visitor,false,'2483');await visitor.waitForFunction(()=>document.querySelector('#main').classList.contains('show'));assert.equal(await visitor.locator('#identityDialog').isVisible(),false);
+  await visitor.locator('#commentBtn').click();await visitor.waitForFunction(()=>document.querySelectorAll('.letter-comment').length===2);
+  assert.equal(await visitor.locator('#commentIdentity').innerText(),'以卓言的名字留言');assert.equal(await visitor.locator('.letter-comment img').count(),7);assert.equal(await visitor.locator('.letter-comment-delete').count(),0);await visitor.locator('#commentsDialog').screenshot({path:join(artifacts,'comments-mobile.png')});
+  await visitor.locator('[data-letter-close="commentsDialog"]').click();await visitor.locator('#photoBtn').click();await visitor.waitForFunction(()=>document.querySelector('#pvCount').textContent.includes('/ 50 张'));await visitor.locator('#pvUpload').click();await visitor.locator('#memoryUploadDialog').waitFor({state:'visible'});
   assert.equal(await visitor.locator('#memoryUploadDialog').getAttribute('data-theme'),'blue');
   await visitor.locator('#memoryFiles').setInputFiles({name:'手机回忆.png',mimeType:'image/png',buffer:png});await visitor.waitForFunction(()=>!document.querySelector('#memorySave').disabled);
   await visitor.locator('#memoryUploadDialog').screenshot({path:join(artifacts,'memory-upload-mobile.png')});await visitor.locator('#memorySave').click();await visitor.waitForFunction(()=>document.querySelector('#pvCount').textContent.includes('/ 51 张'));
-  console.log('✓ 第二台设备看到共享留言与照片；匿名写入被拒绝；相册上传首次要求验证');
+  console.log('✓ 新设备必须先输入入口密码；2483 确定卓言身份；进入后查看留言、上传相册都不用再输入');
 
   await visitor.locator('#pvClose').click();await visitor.locator('#commentBtn').click();await visitor.locator('#commentText').fill('卓言的晚安，明天也一起开心');await visitor.locator('#commentPublish').click();
   await visitor.waitForFunction(()=>document.querySelectorAll('.letter-comment').length===3&&!document.querySelector('#commentPublish').disabled);
@@ -97,7 +118,7 @@ try {
   console.log('✓ 卓言蓝色留言；切换/取消身份正确；只能删除自己的留言；弹幕持续移动循环，删除后移除；减少动态时静止');
 
   for(const width of [390,320,768]){
-    await visitor.setViewportSize({width,height:844});await visitor.reload();await visitor.locator('#envelope').click();await visitor.waitForFunction(()=>document.querySelector('#main').classList.contains('show'));
+    await visitor.setViewportSize({width,height:844});await visitor.reload();await visitor.waitForFunction(()=>document.querySelector('#main').classList.contains('show'));
     assert.ok(await visitor.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await visitor.locator('#commentBtn').click();await visitor.locator('#commentAddImage').click();assert.equal(await visitor.locator('#identityDialog').isVisible(),false,'刷新后记住设备');
     assert.equal(await visitor.locator('#commentIdentity').innerText(),'以卓言的名字留言');const bounds=await visitor.locator('#commentsDialog').boundingBox();assert.ok(bounds.x>=0&&bounds.x+bounds.width<=width);await visitor.locator('[data-letter-close="commentsDialog"]').click();
   }
