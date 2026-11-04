@@ -32,11 +32,13 @@ begin
   return attempts<=p_limit;
 end $$;
 
-create or replace function public.letter_create_comment(p_owner text,p_text text,p_images uuid[])
+-- 兼容已经上线的旧版函数：重跑本脚本更新接口，不改动历史留言。
+drop function if exists public.letter_create_comment(text,text,uuid[]);
+create or replace function public.letter_create_comment(p_owner text,p_text text,p_images uuid[],p_author jsonb)
 returns jsonb language plpgsql security definer set search_path=public,pg_temp as $$
 declare image_count integer; result letter_records%rowtype;
 begin
-  if char_length(p_text)>2000 or cardinality(p_images)>6 or (length(trim(p_text))=0 and cardinality(p_images)=0) then
+  if char_length(p_text)>2000 or cardinality(p_images)>30 or (length(trim(p_text))=0 and cardinality(p_images)=0) then
     raise exception '留言内容无效';
   end if;
   perform id from letter_records where id=any(p_images) order by id for update;
@@ -44,15 +46,38 @@ begin
     where id=any(p_images) and kind='attachment' and owner=p_owner and not coalesce((data->>'attached')::boolean,false);
   if image_count<>cardinality(p_images) then raise exception '图片无效，请重新添加。'; end if;
   insert into letter_records(kind,owner,text,data)
-    values('comment',p_owner,p_text,jsonb_build_object('imageIds',to_jsonb(p_images))) returning * into result;
+    values('comment',p_owner,p_text,jsonb_build_object('imageIds',to_jsonb(p_images),'author',p_author)) returning * into result;
   update letter_records set data=data||'{"attached":true}'::jsonb where id=any(p_images);
   return to_jsonb(result);
 end $$;
 
+create or replace function public.letter_delete_comment(p_author_id text,p_id uuid)
+returns jsonb language plpgsql security definer set search_path=public,pg_temp as $$
+declare target letter_records%rowtype; image_keys jsonb;
+begin
+  select * into target from letter_records where id=p_id and kind='comment' for update;
+  if not found then raise exception '留言不存在'; end if;
+  if coalesce(target.data->'author'->>'id','tanxiao')<>p_author_id then raise exception '只能删除自己的留言'; end if;
+  perform id from letter_records where kind='attachment' and id in (
+    select value::uuid from jsonb_array_elements_text(coalesce(target.data->'imageIds','[]'::jsonb))
+  ) order by id for update;
+  select coalesce(jsonb_agg(data->>'key'),'[]'::jsonb) into image_keys from letter_records
+    where kind='attachment' and owner=target.owner and coalesce((data->>'attached')::boolean,false) and id in (
+      select value::uuid from jsonb_array_elements_text(coalesce(target.data->'imageIds','[]'::jsonb))
+    );
+  delete from letter_records where kind='attachment' and owner=target.owner and coalesce((data->>'attached')::boolean,false) and id in (
+    select value::uuid from jsonb_array_elements_text(coalesce(target.data->'imageIds','[]'::jsonb))
+  );
+  delete from letter_records where id=p_id;
+  return image_keys;
+end $$;
+
 revoke all on function public.letter_rate_limit(text,integer,integer) from public,anon,authenticated;
-revoke all on function public.letter_create_comment(text,text,uuid[]) from public,anon,authenticated;
+revoke all on function public.letter_create_comment(text,text,uuid[],jsonb) from public,anon,authenticated;
+revoke all on function public.letter_delete_comment(text,uuid) from public,anon,authenticated;
 grant execute on function public.letter_rate_limit(text,integer,integer) to service_role;
-grant execute on function public.letter_create_comment(text,text,uuid[]) to service_role;
+grant execute on function public.letter_create_comment(text,text,uuid[],jsonb) to service_role;
+grant execute on function public.letter_delete_comment(text,uuid) to service_role;
 
 insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
 values('letter-images','letter-images',false,1572864,array['image/jpeg'])

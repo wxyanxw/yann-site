@@ -1,3 +1,6 @@
 {
-  "password": "4813"
+  "users": [
+    { "id": "tanxiao", "name": "谭笑", "password": "4813", "theme": "pink" },
+    { "id": "zhuoyan", "name": "卓言", "password": "2483", "theme": "blue" }
+  ]
 }

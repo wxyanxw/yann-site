@@ -175,6 +175,7 @@
 </head>
 <body>
   <div class="letter-backdrop" aria-hidden="true"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div><div id="stars"></div></div>
+  <div id="letterDanmaku" class="letter-danmaku" aria-hidden="true"></div>
   <div id="letterEffects" class="letter-effects" aria-hidden="true"></div>
 
   <!-- 开场：卓言写给谭笑的信 -->
@@ -234,7 +235,7 @@
   <dialog id="commentsDialog" class="letter-dialog" aria-labelledby="commentsTitle">
     <header class="letter-dialog-head"><div><p class="letter-eyebrow">WORDS FOR US</p><h2 id="commentsTitle">留句话给我</h2><p>今天的小事，想说的话，都可以留在这里。</p></div><button class="letter-close" data-letter-close="commentsDialog" type="button" aria-label="关闭留言区">×</button></header>
     <div class="letter-scroll"><div class="letter-toolbar"><span id="commentLoadStatus" class="letter-status" role="status"></span><button id="commentRefresh" class="letter-small-button" type="button">刷新留言</button></div><div id="commentFeed" class="letter-feed"></div><button id="commentMore" class="letter-small-button letter-load-more" type="button" hidden>再看看之前的留言</button></div>
-    <form id="commentForm" class="letter-composer"><label for="commentText">想对我说什么？</label><textarea id="commentText" class="letter-textarea" maxlength="2000" placeholder="写下你想说的话…"></textarea><div id="commentPreviews" class="letter-previews"></div><input id="commentFiles" class="letter-file-input" type="file" accept="image/jpeg,image/png,image/webp" multiple tabindex="-1"><div class="letter-toolbar"><button id="commentAddImage" class="letter-small-button" type="button">添一张图片 ＋</button><span id="commentLength">0 / 2000</span><button id="commentPublish" class="letter-primary" type="submit">送出留言</button></div><p id="commentIdentity" class="letter-status"></p><p id="commentPublishStatus" class="letter-status" role="status"></p><p id="commentError" class="letter-error" role="alert"></p></form>
+    <form id="commentForm" class="letter-composer"><label for="commentText">想对我说什么？</label><textarea id="commentText" class="letter-textarea" maxlength="2000" placeholder="写下你想说的话…"></textarea><div id="commentPreviews" class="letter-previews"></div><input id="commentFiles" class="letter-file-input" type="file" accept="image/jpeg,image/png,image/webp" multiple tabindex="-1"><div class="letter-toolbar"><button id="commentAddImage" class="letter-small-button" type="button">添加图片 ＋</button><span id="commentLength">0 / 2000</span><button id="commentPublish" class="letter-primary" type="submit">送出留言</button></div><div class="letter-identity-row"><span id="commentIdentity" class="letter-status"></span><button id="commentSwitchIdentity" class="letter-small-button" type="button">切换身份</button></div><p id="commentImageHint" class="letter-status">每条最多 30 张图片 · 自动压缩</p><p id="commentPublishStatus" class="letter-status" role="status"></p><p id="commentError" class="letter-error" role="alert"></p></form>
   </dialog>
   <dialog id="memoryUploadDialog" class="letter-dialog" aria-labelledby="memoryTitle">
     <header class="letter-dialog-head"><div><p class="letter-eyebrow">OUR LITTLE MOMENTS</p><h2 id="memoryTitle">添一张我们的回忆</h2><p>存进“我们的回忆”相册，下次一起慢慢看。</p></div><button class="letter-close" data-letter-close="memoryUploadDialog" type="button" aria-label="关闭相册上传">×</button></header>
@@ -242,8 +243,13 @@
     <div class="letter-dialog-actions"><span id="memoryProgress" class="letter-status" role="status"></span><button id="memorySave" class="letter-primary" type="button" disabled>存进相册</button></div>
   </dialog>
   <dialog id="identityDialog" class="letter-dialog letter-verification" aria-labelledby="identityTitle">
-    <header class="letter-dialog-head"><div><p class="letter-eyebrow">JUST BETWEEN US</p><h2 id="identityTitle">输入我们的密码</h2><p>这台设备记住你以后，<br>下次留言、上传照片就不用再输入啦。</p></div><button class="letter-close" data-letter-close="identityDialog" type="button" aria-label="取消密码验证">×</button></header>
+    <header class="letter-dialog-head"><div><p class="letter-eyebrow">JUST BETWEEN US</p><h2 id="identityTitle">输入我们的密码</h2><p>密码决定留言的名字，<br>记住身份后，也可以随时切换。</p></div><button class="letter-close" data-letter-close="identityDialog" type="button" aria-label="取消密码验证">×</button></header>
     <form id="identityForm"><div class="letter-scroll"><label for="identityPassword">我们的密码</label><input id="identityPassword" class="letter-password" type="password" inputmode="numeric" autocomplete="current-password" maxlength="128" placeholder="输入密码" required autofocus><p id="identityStatus" class="letter-status" role="status"></p><p id="identityError" class="letter-error" role="alert"></p></div><div class="letter-dialog-actions"><button id="identitySubmit" class="letter-primary" type="submit">验证并继续</button></div></form>
+  </dialog>
+  <dialog id="commentDeleteDialog" class="letter-dialog letter-verification" aria-labelledby="commentDeleteTitle">
+    <header class="letter-dialog-head"><div><p class="letter-eyebrow">A LITTLE EDIT</p><h2 id="commentDeleteTitle">删掉这条留言？</h2><p>文字和留言图片都会删除，也会从背景弹幕中移除。</p></div><button class="letter-close" data-letter-close="commentDeleteDialog" type="button" aria-label="取消删除">×</button></header>
+    <div class="letter-scroll"><p id="commentDeletePreview" class="letter-delete-preview"></p><p id="commentDeleteError" class="letter-error" role="alert"></p></div>
+    <div class="letter-dialog-actions"><button class="letter-small-button" data-letter-close="commentDeleteDialog" type="button">留着吧</button><button id="commentDeleteConfirm" class="letter-primary" type="button">确认删除</button></div>
   </dialog>
   <dialog id="letterImageDialog" class="letter-dialog letter-image-dialog" aria-label="查看留言图片"><button class="letter-close" data-letter-close="letterImageDialog" type="button" aria-label="关闭图片">×</button><img id="letterFullImage" alt="留言照片"></dialog>
   <div class="toast" id="toast"></div>

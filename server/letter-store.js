@@ -59,17 +59,32 @@ class LocalStore {
     if(count===1)this.db.prepare('DELETE FROM letter_limits WHERE start < ?').run(now-86400000);
     return count<=limit;
   }
-  async createComment(owner, text, imageIds) {
+  async createComment(owner, text, imageIds, author) {
     this.db.exec('BEGIN IMMEDIATE');
     try {
       for(const id of imageIds) {
         const row = this.row(this.db.prepare('SELECT * FROM letter_records WHERE id=?').get(id));
         if(!row || row.kind!=='attachment' || row.owner!==owner || row.data.attached)throw new Error('图片无效，请重新添加。');
       }
-      const row = this.insertRow({ kind:'comment', owner, text, data:{imageIds} });
+      const row = this.insertRow({ kind:'comment', owner, text, data:{imageIds,author} });
       for(const id of imageIds)this.db.prepare('UPDATE letter_records SET data=json_set(data,\'$.attached\',json(\'true\')) WHERE id=?').run(id);
       this.db.exec('COMMIT'); return row;
     } catch(error) { this.db.exec('ROLLBACK'); throw error; }
+  }
+  async deleteComment(authorId,id) {
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      const row=this.row(this.db.prepare("SELECT * FROM letter_records WHERE id=? AND kind='comment'").get(id));
+      if(!row)throw new Error('留言不存在');
+      if((row.data.author?.id||'tanxiao')!==authorId)throw new Error('只能删除自己的留言');
+      const keys=[];
+      for(const imageId of row.data.imageIds||[]) {
+        const image=this.row(this.db.prepare("SELECT * FROM letter_records WHERE id=? AND kind='attachment'").get(imageId));
+        if(image&&image.owner===row.owner&&image.data.attached){keys.push(image.data.key);this.db.prepare('DELETE FROM letter_records WHERE id=?').run(imageId);}
+      }
+      this.db.prepare('DELETE FROM letter_records WHERE id=?').run(id);
+      this.db.exec('COMMIT');return keys;
+    }catch(error){this.db.exec('ROLLBACK');throw error;}
   }
   async putObject(key, data) { await mkdir(join(DATA_DIR,'uploads'),{recursive:true}); await writeFile(join(DATA_DIR,'uploads',key),data,{flag:'wx'}); }
   async getObject(key) { return readFile(join(DATA_DIR,'uploads',key)); }
@@ -107,7 +122,8 @@ class SupabaseStore {
     return this.json('letter_records?'+query);
   }
   async rateLimit(key,limit,seconds) { return this.json('rpc/letter_rate_limit',{method:'POST',body:JSON.stringify({p_key:key,p_limit:limit,p_seconds:seconds})}); }
-  async createComment(owner,text,imageIds) { return this.json('rpc/letter_create_comment',{method:'POST',body:JSON.stringify({p_owner:owner,p_text:text,p_images:imageIds})}); }
+  async createComment(owner,text,imageIds,author) { return this.json('rpc/letter_create_comment',{method:'POST',body:JSON.stringify({p_owner:owner,p_text:text,p_images:imageIds,p_author:author})}); }
+  async deleteComment(authorId,id) { return this.json('rpc/letter_delete_comment',{method:'POST',body:JSON.stringify({p_author_id:authorId,p_id:id})}); }
   async putObject(key,data) { await this.request(`/storage/v1/object/${bucket}/${key}`,{method:'POST',headers:{'Content-Type':'image/jpeg','x-upsert':'false'},body:data}); }
   async getObject(key) { return Buffer.from(await (await this.request(`/storage/v1/object/${bucket}/${key}`)).arrayBuffer()); }
   async deleteObject(key) { await this.request(`/storage/v1/object/${bucket}`,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({prefixes:[key]})}).catch(()=>{}); }
