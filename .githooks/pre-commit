@@ -1,0 +1,8 @@
+#!/bin/sh
+# 自动重新生成 photo/manifest.js，让照片增减后清单始终与 photo/ 目录同步。
+# 这样你只需要正常 git commit / push，永远不用手动跑 node gen_photos.js。
+if command -v node >/dev/null 2>&1; then
+  node gen_photos.js
+  # 把更新后的清单一起提交（内容没变则是空操作）
+  git add photo/manifest.js
+fi
