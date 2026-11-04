@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#ff8fab">
 <title>谭笑，想你了，今天过得还好吗？ · 一封信</title>
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <style>
   :root{
     --pink:#ff8fab; --rose:#ff5d8f; --gold:#ffd6a5;
@@ -170,12 +171,11 @@
     box-shadow:0 6px 16px rgba(255,93,143,.35); cursor:pointer; transition:transform .1s ease; }
   .pv-exit:active{ transform:scale(.94); }
 </style>
+<link rel="stylesheet" href="assets/css/letter-community.css">
 </head>
 <body>
-  <div class="blob b1"></div>
-  <div class="blob b2"></div>
-  <div class="blob b3"></div>
-  <div id="stars"></div>
+  <div class="letter-backdrop" aria-hidden="true"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div><div id="stars"></div></div>
+  <div id="letterEffects" class="letter-effects" aria-hidden="true"></div>
 
   <!-- 开场：卓言写给谭笑的信 -->
   <div id="intro">
@@ -211,6 +211,7 @@
         <button class="btn" id="callBtn">点下试试 🔊</button>
         <button class="btn ghost" id="whisperBtn">悄悄说一句 💬</button>
         <button class="btn ghost" id="photoBtn">我们的回忆 📷</button>
+        <button class="btn ghost" id="commentBtn">留句话 💌</button>
         <button class="btn ghost" id="shareBtn">复制一下 📋</button>
         <button class="btn ghost" id="shakeBtn">摇一摇 📳</button>
       </div>
@@ -225,9 +226,26 @@
     <button class="pv-nav pv-next" id="pvNext" aria-label="下一张">›</button>
     <div class="pv-bar">
       <span class="pv-count" id="pvCount"></span>
+      <button class="pv-upload" id="pvUpload" type="button">添一张回忆 ＋</button>
       <button class="pv-exit" id="pvClose">退出 ✕</button>
     </div>
+    <p class="pv-caption" id="pvCaption"></p>
   </div>
+  <dialog id="commentsDialog" class="letter-dialog" aria-labelledby="commentsTitle">
+    <header class="letter-dialog-head"><div><p class="letter-eyebrow">WORDS FOR US</p><h2 id="commentsTitle">留句话给我</h2><p>今天的小事，想说的话，都可以留在这里。</p></div><button class="letter-close" data-letter-close="commentsDialog" type="button" aria-label="关闭留言区">×</button></header>
+    <div class="letter-scroll"><div class="letter-toolbar"><span id="commentLoadStatus" class="letter-status" role="status"></span><button id="commentRefresh" class="letter-small-button" type="button">刷新留言</button></div><div id="commentFeed" class="letter-feed"></div><button id="commentMore" class="letter-small-button letter-load-more" type="button" hidden>再看看之前的留言</button></div>
+    <form id="commentForm" class="letter-composer"><label for="commentText">想对我说什么？</label><textarea id="commentText" class="letter-textarea" maxlength="2000" placeholder="写下你想说的话…"></textarea><div id="commentPreviews" class="letter-previews"></div><input id="commentFiles" class="letter-file-input" type="file" accept="image/jpeg,image/png,image/webp" multiple tabindex="-1"><div class="letter-toolbar"><button id="commentAddImage" class="letter-small-button" type="button">添一张图片 ＋</button><span id="commentLength">0 / 2000</span><button id="commentPublish" class="letter-primary" type="submit">送出留言</button></div><p id="commentIdentity" class="letter-status"></p><p id="commentPublishStatus" class="letter-status" role="status"></p><p id="commentError" class="letter-error" role="alert"></p></form>
+  </dialog>
+  <dialog id="memoryUploadDialog" class="letter-dialog" aria-labelledby="memoryTitle">
+    <header class="letter-dialog-head"><div><p class="letter-eyebrow">OUR LITTLE MOMENTS</p><h2 id="memoryTitle">添一张我们的回忆</h2><p>存进“我们的回忆”相册，下次一起慢慢看。</p></div><button class="letter-close" data-letter-close="memoryUploadDialog" type="button" aria-label="关闭相册上传">×</button></header>
+    <div class="letter-scroll"><div class="letter-upload-zone"><p>一起去过的地方，一起度过的日常。</p><input id="memoryFiles" class="letter-file-input" type="file" accept="image/jpeg,image/png,image/webp" multiple><label class="letter-primary letter-upload-label" for="memoryFiles">选择照片</label><small>一次最多 12 张 · JPG / PNG / WebP · 照片会自动压缩</small></div><div id="memoryPreviews" class="letter-previews"></div><label for="memoryCaption">给这段回忆留一句话（可选）</label><textarea id="memoryCaption" class="letter-textarea" maxlength="200" placeholder="比如：那天的风很温柔。"></textarea><p id="memoryError" class="letter-error" role="alert"></p></div>
+    <div class="letter-dialog-actions"><span id="memoryProgress" class="letter-status" role="status"></span><button id="memorySave" class="letter-primary" type="button" disabled>存进相册</button></div>
+  </dialog>
+  <dialog id="identityDialog" class="letter-dialog letter-verification" aria-labelledby="identityTitle">
+    <header class="letter-dialog-head"><div><p class="letter-eyebrow">JUST BETWEEN US</p><h2 id="identityTitle">输入我们的密码</h2><p>这台设备记住你以后，<br>下次留言、上传照片就不用再输入啦。</p></div><button class="letter-close" data-letter-close="identityDialog" type="button" aria-label="取消密码验证">×</button></header>
+    <form id="identityForm"><div class="letter-scroll"><label for="identityPassword">我们的密码</label><input id="identityPassword" class="letter-password" type="password" inputmode="numeric" autocomplete="current-password" maxlength="128" placeholder="输入密码" required autofocus><p id="identityStatus" class="letter-status" role="status"></p><p id="identityError" class="letter-error" role="alert"></p></div><div class="letter-dialog-actions"><button id="identitySubmit" class="letter-primary" type="submit">验证并继续</button></div></form>
+  </dialog>
+  <dialog id="letterImageDialog" class="letter-dialog letter-image-dialog" aria-label="查看留言图片"><button class="letter-close" data-letter-close="letterImageDialog" type="button" aria-label="关闭图片">×</button><img id="letterFullImage" alt="留言照片"></dialog>
   <div class="toast" id="toast"></div>
 
 <script src="photo/manifest.js"></script>
@@ -354,14 +372,14 @@
     p.textContent = ch || (Math.random()<0.5 ? "💕" : "💗");
     p.style.left = x + "px";
     p.style.top = y + "px";
-    document.body.appendChild(p);
+    $("letterEffects").appendChild(p);
     setTimeout(function(){ p.remove(); }, 1600);
   }
   function spawnPlus(x, y){
     var p = document.createElement("div");
     p.className = "plus"; p.textContent = "+1 💞";
     p.style.left = x + "px"; p.style.top = y + "px";
-    document.body.appendChild(p);
+    $("letterEffects").appendChild(p);
     setTimeout(function(){ p.remove(); }, 1000);
   }
 
@@ -399,7 +417,7 @@
           r.style.left = Math.random()*100+"%";
           r.style.fontSize = (18+Math.random()*22)+"px";
           r.style.animationDuration = (2.5+Math.random()*2)+"s";
-          document.body.appendChild(r);
+          $("letterEffects").appendChild(r);
           setTimeout(function(){ r.remove(); }, 5000);
         }, idx*40);
       })(i);
@@ -417,6 +435,7 @@
       $("intro").classList.add("hide");
       setTimeout(function(){
         $("main").classList.add("show");
+        $("intro").style.display="none";
         typeWriter();
         setQuote(pickQuote());
       }, 700);
@@ -451,6 +470,7 @@
   document.body.addEventListener("pointerdown", function(e){
     if(opened && $("main").classList.contains("show")){
       if(e.target === heart || heart.contains(e.target)) return;
+      if(e.target.closest("dialog, #photoViewer")) return;
       spawnParticle(e.clientX-12, e.clientY-12);
     }
   });
@@ -466,7 +486,8 @@
   });
 
   /* ---------- 我们的回忆（相册：左右箭头切换） ---------- */
-  var photoList = (window.PHOTO_LIST || []).slice();
+  var originalPhotos = (window.PHOTO_LIST || []).map(function(name){return {id:name,src:"photo/"+encodeURIComponent(name),name:name,caption:""};});
+  var photoList = originalPhotos.slice();
   var photoIndex = 0;
   function showPhotoAt(i){
     if(!photoList.length){
@@ -474,8 +495,10 @@
       return;
     }
     photoIndex = (i % photoList.length + photoList.length) % photoList.length;
-    var name = photoList[photoIndex];
-    $("pvImg").src = "photo/" + encodeURIComponent(name);
+    var entry = photoList[photoIndex];
+    $("pvImg").src = entry.src;
+    $("pvImg").alt = entry.caption || "我们的回忆";
+    $("pvCaption").textContent = entry.caption || "";
     $("pvCount").textContent = "第 " + (photoIndex+1) + " / " + photoList.length + " 张";
     $("photoViewer").classList.add("show");
     buzz(20);
@@ -493,6 +516,16 @@
   $("pvClose").addEventListener("click", closePhoto);
   $("photoViewer").addEventListener("click", function(e){
     if(e.target === this) closePhoto(); // 点背景关闭
+  });
+  window.addEventListener("letter:photos",function(event){
+    var selected=photoList[photoIndex] && photoList[photoIndex].id;
+    photoList=originalPhotos.concat(event.detail.photos.map(function(photo){return {id:photo.id,src:photo.url,name:photo.name,caption:photo.caption};}));
+    var index=photoList.findIndex(function(photo){return photo.id===selected;});
+    if($("photoViewer").classList.contains("show"))showPhotoAt(index<0?0:index);
+  });
+  window.addEventListener("letter:show-photo",function(event){
+    var index=photoList.findIndex(function(photo){return photo.id===event.detail.id;});
+    if(index>=0)showPhotoAt(index);
   });
 
   $("shareBtn").addEventListener("click", function(){
@@ -543,6 +576,6 @@
   document.addEventListener("gesturestart", function(e){ e.preventDefault(); });
 })();
 </script>
+<script type="module" src="assets/js/letter-community.js"></script>
 </body>
 </html>
- 

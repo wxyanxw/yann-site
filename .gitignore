@@ -4,3 +4,8 @@ test-results/
 playwright-report/
 __pycache__/
 *.pyc
+.env
+.env.*
+!.env.example
+.letter-data/
+public/

@@ -1,0 +1,15 @@
+{
+  "buildCommand": "node scripts/build_site.mjs",
+  "outputDirectory": "public",
+  "functions": {
+    "api/letter.js": { "maxDuration": 30, "includeFiles": "server/**" }
+  },
+  "rewrites": [
+    { "source": "/server/:path*", "destination": "/__private_not_found__" },
+    { "source": "/tests/:path*", "destination": "/__private_not_found__" },
+    { "source": "/supabase/:path*", "destination": "/__private_not_found__" }
+  ],
+  "headers": [
+    { "source": "/api/letter", "headers": [{ "key": "Cache-Control", "value": "no-store" }] }
+  ]
+}
